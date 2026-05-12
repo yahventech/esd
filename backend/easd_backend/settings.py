@@ -5,6 +5,7 @@ and falls back to a dev-safe default. Copy `.env.example` to `.env` to set
 your own values; nothing here will break if a key is missing.
 """
 
+import json
 import os
 from datetime import timedelta
 from pathlib import Path
@@ -33,18 +34,36 @@ def env(key, default=None, cast=str):
         except (TypeError, ValueError):
             return default
     if cast is list:
-        return [item.strip() for item in raw.split(",") if item.strip()]
+        raw = raw.strip()
+        if raw.startswith("[") and raw.endswith("]"):
+            try:
+                parsed = json.loads(raw)
+                if isinstance(parsed, list):
+                    return [str(item).strip().strip('"').strip("'") for item in parsed if str(item).strip()]
+            except json.JSONDecodeError:
+                pass
+        return [item.strip().strip('"').strip("'") for item in raw.split(",") if item.strip()]
     return raw
 
+
+DEFAULT_ALLOWED_HOSTS = [
+    "esd-biau.onrender.com",
+    "ea-sportsdesk.com",
+    "localhost",
+    "127.0.0.1",
+]
 
 SECRET_KEY = env("DJANGO_SECRET_KEY",
                  default="django-insecure-easd-dev-key-change-me-in-production")
 DEBUG = env("DJANGO_DEBUG", default=True, cast=bool)
 ALLOWED_HOSTS = env(
     "DJANGO_ALLOWED_HOSTS",
-    default=["esd-biau.onrender.com", "ea-sportsdesk.com", "localhost", "127.0.0.1"],
+    default=DEFAULT_ALLOWED_HOSTS,
     cast=list,
-)
+) or []
+for host in DEFAULT_ALLOWED_HOSTS:
+    if host not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(host)
 
 INSTALLED_APPS = [
     "daphne",
