@@ -29,12 +29,11 @@ export default function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-12">
           {/* Brand */}
           <div className="col-span-2 md:col-span-1 space-y-4">
-            <div>
-              <span className="font-display text-2xl font-bold bg-gradient-to-r from-gold via-yellow-400 to-gold bg-clip-text text-transparent tracking-[0.08em]">
-                EASD
-              </span>
-              <div className="h-[2px] w-10 bg-gradient-to-r from-gold to-transparent mt-1" />
-            </div>
+            <img
+              src="/easd-logo-light.svg"
+              alt="EASD — East Africa Sports Desk"
+              className="h-12 w-auto"
+            />
             <p className="text-[13px] text-gray-500 font-body leading-relaxed max-w-[200px]">
               The Global Voice of East Africa Sport. Covering every story that matters.
             </p>

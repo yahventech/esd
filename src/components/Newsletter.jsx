@@ -1,17 +1,32 @@
 // EASD Component — Newsletter
-// Premium email signup section with gradient border card
+// Subscribes via the DRF /api/newsletter/subscribe/ endpoint.
 
 import { useState } from 'react';
-import { ArrowRight, Check, Trophy } from 'lucide-react';
+import { ArrowRight, Check, Trophy, Loader2 } from 'lucide-react';
 import { useScrollAnimation } from '../hooks/useScrollAnimation';
+import { api } from '../lib/api';
 
 export default function Newsletter() {
   const [ref, visible] = useScrollAnimation();
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = () => {
-    if (email.trim()) setSubscribed(true);
+  const handleSubmit = async () => {
+    if (!email.trim()) return;
+    setError(''); setLoading(true);
+    try {
+      const res = await api.newsletter.subscribe(email.trim());
+      setSubscribed(true);
+      setMessage(res?.message || "You're subscribed — welcome to the team!");
+    } catch (e) {
+      const detail = e.data && (e.data.email?.[0] || e.data.detail);
+      setError(detail || e.message || 'Something went wrong');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -22,10 +37,8 @@ export default function Newsletter() {
           visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
         }`}
       >
-        {/* Gradient border wrapper */}
         <div className="relative rounded-2xl p-[1px] bg-gradient-to-r from-emerald/40 via-gold/40 to-emerald/40">
           <div className="relative rounded-2xl overflow-hidden bg-navy p-8 sm:p-12 text-center">
-            {/* Texture */}
             <div
               className="absolute inset-0 opacity-[0.02]"
               style={{
@@ -52,26 +65,32 @@ export default function Newsletter() {
               {subscribed ? (
                 <div className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-xl bg-emerald/10 border border-emerald/30 text-emerald font-display text-sm font-semibold uppercase tracking-wider">
                   <Check size={18} />
-                  You're subscribed — welcome to the team!
+                  {message}
                 </div>
               ) : (
-                <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter your email"
-                    className="flex-1 px-4 py-3.5 rounded-xl text-sm font-body text-white placeholder-gray-500 outline-none bg-white/[0.04] border border-white/10 focus:border-gold/40 focus:ring-1 focus:ring-gold/20 transition-all"
-                    onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-                  />
-                  <button
-                    onClick={handleSubmit}
-                    className="group flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-display text-sm font-semibold uppercase tracking-wider bg-gradient-to-r from-gold to-yellow-500 text-navy hover:shadow-lg hover:shadow-gold/25 transition-all hover:-translate-y-0.5"
-                  >
-                    Subscribe
-                    <ArrowRight size={15} className="transition-transform group-hover:translate-x-0.5" />
-                  </button>
-                </div>
+                <>
+                  <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Enter your email"
+                      disabled={loading}
+                      className="flex-1 px-4 py-3.5 rounded-xl text-sm font-body text-white placeholder-gray-500 outline-none bg-white/[0.04] border border-white/10 focus:border-gold/40 focus:ring-1 focus:ring-gold/20 transition-all disabled:opacity-60"
+                      onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+                    />
+                    <button
+                      onClick={handleSubmit}
+                      disabled={loading}
+                      className="group flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-display text-sm font-semibold uppercase tracking-wider bg-gradient-to-r from-gold to-yellow-500 text-navy hover:shadow-lg hover:shadow-gold/25 transition-all hover:-translate-y-0.5 disabled:opacity-60"
+                    >
+                      {loading ? <Loader2 size={15} className="animate-spin" /> : <>Subscribe <ArrowRight size={15} className="transition-transform group-hover:translate-x-0.5" /></>}
+                    </button>
+                  </div>
+                  {error && (
+                    <p className="mt-3 text-[12px] text-red-400 font-body">{error}</p>
+                  )}
+                </>
               )}
 
               <p className="mt-4 text-[11px] text-gray-600">Free. No spam. Unsubscribe anytime.</p>

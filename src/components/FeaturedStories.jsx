@@ -1,58 +1,84 @@
 // EASD Component — FeaturedStories
-// ESPN-style editorial content grid: featured 3-up + ranked top stories sidebar
+// Editorial grid wired to the DRF backend. Bookmarks are live, clicks open a story modal.
 
-import { Clock, MessageSquare, ChevronRight, BookOpen, Bookmark } from 'lucide-react';
-import { featuredStories, topStories, editorsPicks } from '../data/stories';
+import { useEffect, useState } from 'react';
+import { Clock, MessageSquare, ChevronRight, BookOpen, Bookmark as BookmarkIcon, Loader2 } from 'lucide-react';
+import { useAppData } from '../context/AppDataContext';
+import { useAuth } from '../context/AuthContext';
 import { useScrollAnimation } from '../hooks/useScrollAnimation';
-import { getCategoryBadge, scrollToSection } from '../utils/helpers';
+import { api } from '../lib/api';
+import { getCategoryBadge, getFormatBadge, scrollToSection } from '../utils/helpers';
+import StoryReader from './StoryReader';
 
-function StoryCard({ story, size = 'normal' }) {
+function StoryCard({ story, size = 'normal', onOpen }) {
   const badge = getCategoryBadge(story.category);
+  const fmt = getFormatBadge(story.format);
   const isLarge = size === 'large';
+  const { user, openAuth } = useAuth();
+  const [saved, setSaved] = useState(false);
+  const tags = Array.isArray(story.tags) ? story.tags : [];
+
+  const toggleBookmark = async (e) => {
+    e.stopPropagation();
+    if (!user) { openAuth('login'); return; }
+    try {
+      const res = await api.stories.bookmarkToggle(story.slug);
+      setSaved(Boolean(res?.bookmarked));
+    } catch { /* no-op */ }
+  };
 
   return (
     <article
-      className={`group relative rounded-xl overflow-hidden cursor-pointer transition-all duration-400 hover:-translate-y-1 hover:shadow-xl hover:shadow-gold/[0.06] border border-white/[0.05] hover:border-gold/20 ${
-        isLarge ? 'row-span-2' : ''
-      }`}
+      className="group relative rounded-xl overflow-hidden cursor-pointer transition-all duration-400 hover:-translate-y-1 hover:shadow-xl hover:shadow-gold/[0.06] border border-white/[0.05] hover:border-gold/20 flex flex-col h-full"
       style={{ background: 'rgba(15,31,58,0.6)' }}
-      onClick={() => scrollToSection('newsletter')}
+      onClick={() => onOpen(story)}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          scrollToSection('newsletter');
+          onOpen(story);
         }
       }}
     >
-      {/* Image placeholder with gradient */}
       <div
-        className={`relative ${isLarge ? 'h-56 sm:h-72' : 'h-40'} bg-gradient-to-br ${
+        className={`relative flex-shrink-0 ${isLarge ? 'h-56 sm:h-72' : 'h-40'} bg-gradient-to-br ${
           story.gradient || 'from-navy-200 via-navy-100 to-charcoal'
         }`}
       >
+        {story.coverImage && (
+          <img
+            src={story.coverImage}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover"
+            loading="lazy"
+          />
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-navy via-navy/50 to-transparent pointer-events-none" />
-        {/* Category badge floating */}
-        <span className={`absolute top-3 left-3 ${badge.bg} px-2 py-0.5 font-display text-[10px] font-semibold uppercase tracking-[0.15em] text-white rounded`}>
-          {story.category}
-        </span>
-        {/* Bookmark */}
+        <div className="absolute top-3 left-3 flex items-center gap-1.5">
+          <span className={`${badge.bg} px-2 py-0.5 font-display text-[10px] font-semibold uppercase tracking-[0.15em] text-white rounded`}>
+            {story.category}
+          </span>
+          {fmt && fmt.label !== 'News' && (
+            <span className={`hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded font-display text-[10px] font-semibold uppercase tracking-[0.12em] border ${fmt.bg} ${fmt.text} ${fmt.border}`}>
+              {fmt.symbol && <span>{fmt.symbol}</span>}
+              {fmt.label}
+            </span>
+          )}
+        </div>
         <button
           type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            scrollToSection('newsletter');
-          }}
-          className="absolute top-3 right-3 p-1.5 rounded-full bg-black/30 text-gray-400 hover:text-gold opacity-0 group-hover:opacity-100 transition-all"
+          onClick={toggleBookmark}
+          className={`absolute top-3 right-3 p-1.5 rounded-full bg-black/30 transition-all ${
+            saved ? 'text-gold opacity-100' : 'text-gray-400 opacity-0 group-hover:opacity-100 hover:text-gold'
+          }`}
           aria-label={`Save ${story.headline}`}
         >
-          <Bookmark size={14} />
+          <BookmarkIcon size={14} fill={saved ? '#FFD700' : 'none'} />
         </button>
       </div>
 
-      {/* Content */}
-      <div className={`p-4 ${isLarge ? 'sm:p-5' : ''}`}>
+      <div className={`p-4 flex-1 flex flex-col ${isLarge ? 'sm:p-5' : ''}`}>
         <h3 className={`font-display font-bold leading-tight text-white group-hover:text-gold transition-colors ${
           isLarge ? 'text-lg sm:text-xl' : 'text-sm sm:text-[15px]'
         }`}>
@@ -63,38 +89,48 @@ function StoryCard({ story, size = 'normal' }) {
             {story.summary}
           </p>
         )}
-        <div className="mt-3 flex items-center gap-3 text-[11px] text-gray-500 font-body">
+        {tags.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {tags.slice(0, isLarge ? 4 : 2).map((t) => (
+              <span key={t.slug || t.name}
+                className="text-[10px] font-body text-gold/80 bg-gold/[0.06] border border-gold/15 rounded-full px-2 py-0.5">
+                #{t.name}
+              </span>
+            ))}
+          </div>
+        )}
+        <div className="mt-auto pt-3 flex items-center gap-3 text-[11px] text-gray-500 font-body">
           <span className="flex items-center gap-1"><Clock size={11} /> {story.timestamp}</span>
           <span className="text-gray-700">·</span>
           <span>{story.readTime}</span>
-          {story.commentCount && (
+          {story.commentCount ? (
             <>
               <span className="text-gray-700">·</span>
               <span className="flex items-center gap-1"><MessageSquare size={11} /> {story.commentCount}</span>
             </>
-          )}
+          ) : null}
         </div>
       </div>
     </article>
   );
 }
 
-function RankedStory({ story, rank }) {
+function RankedStory({ story, rank, onOpen }) {
   const badge = getCategoryBadge(story.category);
+  const fmt = getFormatBadge(story.format);
   return (
     <article
       className="group flex items-start gap-3 py-3 cursor-pointer border-b border-white/[0.04] last:border-0"
-      onClick={() => scrollToSection('newsletter')}
+      onClick={() => onOpen(story)}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          scrollToSection('newsletter');
+          onOpen(story);
         }
       }}
     >
-      {/* Rank number */}
       <span className="flex-shrink-0 font-display text-2xl font-bold text-gold/20 group-hover:text-gold/40 transition-colors w-7 text-right leading-none pt-0.5">
         {rank}
       </span>
@@ -103,18 +139,23 @@ function RankedStory({ story, rank }) {
           <span className={`${badge.text} font-display text-[10px] font-semibold uppercase tracking-[0.12em]`}>
             {story.category}
           </span>
+          {fmt && fmt.label !== 'News' && (
+            <span className={`font-display text-[9px] uppercase tracking-[0.12em] ${fmt.text}`}>
+              · {fmt.label}
+            </span>
+          )}
         </div>
         <h4 className="font-display text-[13px] sm:text-sm font-semibold leading-snug text-gray-200 group-hover:text-gold transition-colors line-clamp-2">
           {story.headline}
         </h4>
         <div className="mt-1 flex items-center gap-2 text-[11px] text-gray-600">
           <span>{story.timestamp}</span>
-          {story.commentCount && (
+          {story.commentCount ? (
             <>
               <span className="text-gray-700">·</span>
               <span className="flex items-center gap-1"><MessageSquare size={10} /> {story.commentCount}</span>
             </>
-          )}
+          ) : null}
         </div>
       </div>
     </article>
@@ -123,6 +164,35 @@ function RankedStory({ story, rank }) {
 
 export default function FeaturedStories() {
   const [ref, visible] = useScrollAnimation();
+  const { featured, top, editorsPicks, categories, loading } = useAppData();
+  const [open, setOpen] = useState(null);
+  const [categoryFilter, setCategoryFilter] = useState(null);
+  const [filteredStories, setFilteredStories] = useState([]);
+  const [filterLoading, setFilterLoading] = useState(false);
+
+  // When a sport is picked, fetch its published stories; clearing returns to
+  // the curated featured/top/editor's-pick layout.
+  useEffect(() => {
+    if (!categoryFilter) { setFilteredStories([]); return; }
+    let alive = true;
+    setFilterLoading(true);
+    api.categories.articles(categoryFilter, 24)
+      .then((list) => { if (alive) setFilteredStories(list || []); })
+      .catch(() => { if (alive) setFilteredStories([]); })
+      .finally(() => { if (alive) setFilterLoading(false); });
+    return () => { alive = false; };
+  }, [categoryFilter]);
+
+  if (loading) {
+    return (
+      <section className="relative py-20 text-center text-gray-500 font-body text-sm">
+        Loading editorial content…
+      </section>
+    );
+  }
+  if (!featured.length && !top.length && !editorsPicks.length) {
+    return null;
+  }
 
   return (
     <section className="relative py-12 sm:py-20 bg-gradient-to-b from-navy via-charcoal/50 to-navy">
@@ -132,12 +202,13 @@ export default function FeaturedStories() {
           visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
         }`}
       >
-        {/* Section header */}
-        <div className="flex items-center justify-between mb-7">
+        <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
             <div className="w-1 h-7 rounded-full bg-gradient-to-b from-gold to-emerald" />
             <h2 className="font-display text-xl sm:text-2xl font-bold uppercase tracking-wider">
-              <span className="bg-gradient-to-r from-gold to-yellow-400 bg-clip-text text-transparent">Top</span>
+              <span className="bg-gradient-to-r from-gold to-yellow-400 bg-clip-text text-transparent">
+                {categoryFilter ? (categories.find((c) => c.slug === categoryFilter)?.name || 'Sport') : 'Top'}
+              </span>
               <span className="text-white ml-2">Stories</span>
             </h2>
           </div>
@@ -150,22 +221,81 @@ export default function FeaturedStories() {
           </button>
         </div>
 
-        {/* ESPN-style grid: stories left, ranked list right */}
-        <div className="grid lg:grid-cols-12 gap-5">
-          {/* Featured stories grid — 8 cols */}
-          <div className="lg:col-span-8">
-            <div className="grid sm:grid-cols-2 gap-4">
-              {/* First story spans 2 rows on sm+ */}
-              <StoryCard story={featuredStories[0]} size="large" />
-              {featuredStories.slice(1).map((story) => (
-                <StoryCard key={story.id} story={story} />
+        {/* Sport-category filter chips — pick a sport to focus the feed. */}
+        {categories && categories.length > 0 && (
+          <div
+            className="flex gap-2 overflow-x-auto pb-3 mb-5"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          >
+            <button
+              type="button"
+              onClick={() => setCategoryFilter(null)}
+              className={`shrink-0 px-3 py-1.5 rounded-full font-display text-[11px] uppercase tracking-wider border transition-all ${
+                categoryFilter === null
+                  ? 'bg-gold/10 text-gold border-gold/40'
+                  : 'text-gray-400 border-white/[0.06] hover:text-white hover:border-white/20'
+              }`}
+            >
+              All sports
+            </button>
+            {categories.map((cat) => {
+              const isActive = categoryFilter === cat.slug;
+              return (
+                <button
+                  key={cat.slug}
+                  type="button"
+                  onClick={() => setCategoryFilter(isActive ? null : cat.slug)}
+                  className={`shrink-0 px-3 py-1.5 rounded-full font-display text-[11px] uppercase tracking-wider border transition-all inline-flex items-center gap-1.5 ${
+                    isActive
+                      ? 'bg-gold/10 text-gold border-gold/40'
+                      : 'text-gray-400 border-white/[0.06] hover:text-white hover:border-white/20'
+                  }`}
+                >
+                  {cat.icon && <span>{cat.icon}</span>}
+                  {cat.name}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Filtered flat grid — only renders when a sport chip is active. */}
+        {categoryFilter && (
+          filterLoading ? (
+            <div className="py-12 flex justify-center"><Loader2 size={20} className="text-gold animate-spin" /></div>
+          ) : filteredStories.length === 0 ? (
+            <p className="py-10 text-center text-gray-500 font-body italic">
+              No stories in {(categories.find((c) => c.slug === categoryFilter)?.name) || 'this sport'} yet.
+            </p>
+          ) : (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredStories.map((s) => (
+                <StoryCard key={s.id} story={s} onOpen={setOpen} />
               ))}
             </div>
-          </div>
+          )
+        )}
 
-          {/* Right sidebar — ranked top stories + editor's picks */}
-          <div className="lg:col-span-4 space-y-6">
-            {/* Top Stories ranked list */}
+        {/* Curated layout — only when no sport filter is active. */}
+        {!categoryFilter && (
+        <div className="grid lg:grid-cols-12 gap-5">
+          {featured.length > 0 && (
+            <div className="lg:col-span-8">
+              <div className="grid sm:grid-cols-2 gap-4 items-stretch">
+                <div className="sm:col-span-1">
+                  <StoryCard story={featured[0]} size="large" onOpen={setOpen} />
+                </div>
+                <div className="sm:col-span-1 grid grid-rows-2 gap-4">
+                  {featured.slice(1, 3).map((story) => (
+                    <StoryCard key={story.id} story={story} onOpen={setOpen} />
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className={`${featured.length > 0 ? 'lg:col-span-4' : 'lg:col-span-12'} space-y-6`}>
+            {top.length > 0 && (
             <div className="rounded-xl bg-navy-100/50 border border-white/[0.05] p-4">
               <h3 className="font-display text-[13px] font-semibold uppercase tracking-[0.12em] text-gold mb-3 flex items-center gap-2">
                 <span className="w-5 h-5 rounded bg-gold/10 flex items-center justify-center">
@@ -174,13 +304,14 @@ export default function FeaturedStories() {
                 Top Stories
               </h3>
               <div>
-                {topStories.map((story, i) => (
-                  <RankedStory key={story.id} story={story} rank={i + 1} />
+                {top.map((story, i) => (
+                  <RankedStory key={story.id} story={story} rank={i + 1} onOpen={setOpen} />
                 ))}
               </div>
             </div>
+            )}
 
-            {/* Editor's Picks */}
+            {editorsPicks.length > 0 && (
             <div className="rounded-xl bg-navy-100/50 border border-white/[0.05] p-4">
               <h3 className="font-display text-[13px] font-semibold uppercase tracking-[0.12em] text-emerald mb-3 flex items-center gap-2">
                 <BookOpen size={14} />
@@ -189,17 +320,18 @@ export default function FeaturedStories() {
               <div className="space-y-3">
                 {editorsPicks.map((pick) => {
                   const b = getCategoryBadge(pick.category);
+                  const f = getFormatBadge(pick.format);
                   return (
                     <article
                       key={pick.id}
                       className="group cursor-pointer"
-                      onClick={() => scrollToSection('newsletter')}
+                      onClick={() => setOpen(pick)}
                       role="button"
                       tabIndex={0}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault();
-                          scrollToSection('newsletter');
+                          setOpen(pick);
                         }
                       }}
                     >
@@ -207,6 +339,11 @@ export default function FeaturedStories() {
                         <span className={`${b.text} font-display text-[10px] font-semibold uppercase tracking-[0.12em]`}>
                           {pick.category}
                         </span>
+                        {f && f.label !== 'News' && (
+                          <span className={`font-display text-[9px] uppercase tracking-[0.12em] ${f.text}`}>
+                            · {f.label}
+                          </span>
+                        )}
                         <span className="text-[10px] text-gray-600">· {pick.readTime}</span>
                       </div>
                       <h4 className="font-display text-[13px] font-semibold leading-snug text-gray-300 group-hover:text-gold transition-colors">
@@ -217,9 +354,13 @@ export default function FeaturedStories() {
                 })}
               </div>
             </div>
+            )}
           </div>
         </div>
+        )}
       </div>
+
+      {open && <StoryReader story={open} onClose={() => setOpen(null)} />}
     </section>
   );
 }
