@@ -40,7 +40,11 @@ def env(key, default=None, cast=str):
 SECRET_KEY = env("DJANGO_SECRET_KEY",
                  default="django-insecure-easd-dev-key-change-me-in-production")
 DEBUG = env("DJANGO_DEBUG", default=True, cast=bool)
-ALLOWED_HOSTS = env("DJANGO_ALLOWED_HOSTS", default=["*"], cast=list)
+ALLOWED_HOSTS = env(
+    "DJANGO_ALLOWED_HOSTS",
+    default=["esd-biau.onrender.com", "ea-sportsdesk.com", "localhost", "127.0.0.1"],
+    cast=list,
+)
 
 INSTALLED_APPS = [
     "daphne",
