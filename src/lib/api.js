@@ -2,7 +2,7 @@
 // Thin fetch wrapper around the Django REST Framework backend with automatic JWT refresh.
 
 const API_BASE =
-  import.meta.env.VITE_API_URL?.replace(/\/$/, '') || 'https://esd-biau.onrender.com';
+  import.meta.env.VITE_API_URL?.replace(/\/$/, '') || 'https://esd-biau.onrender.com/api/';
 
 const TOKEN_KEY = 'easd.access';
 const REFRESH_KEY = 'easd.refresh';

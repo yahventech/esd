@@ -1,1 +1,1 @@
-web: daphne -b 0.0.0.0 -p $PORT backend.asgi:application
+web: daphne -b 0.0.0.0 -p $PORT easd_backend.asgi:application
