@@ -1,0 +1,14 @@
+# EASD Cron Jobs for Automated Tasks
+# Add these to your system's crontab (crontab -e) to run automated tasks
+
+# Scrape Kenya sports news every 2 hours
+# 0 */2 * * * cd /path/to/your/project/backend && ./scrape_news.sh
+
+# Alternative: Run via Python directly (if virtual env is set up)
+# 0 */2 * * * cd /path/to/your/project/backend && /path/to/venv/bin/python manage.py scrape_kenya_sports --limit 5
+
+# Clean up old stories (optional - run weekly)
+# 0 2 * * 0 cd /path/to/your/project/backend && /path/to/venv/bin/python manage.py cleanup_old_stories
+
+# Note: Replace /path/to/your/project with your actual project path
+# Note: Make sure the virtual environment path is correct

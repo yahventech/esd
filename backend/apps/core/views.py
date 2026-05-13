@@ -1,7 +1,7 @@
-from django.contrib.auth import get_user_model
-from django.db.models import Count, Sum
+from django.http import JsonResponse
+from django.core.management import call_command
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny, IsAdminUser
+from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 
 from apps.categories.models import Category
@@ -94,3 +94,25 @@ def admin_stats(request):
             .order_by("-sc").values("name", "sc")[:5]
         ),
     })
+
+
+@api_view(["POST"])
+@permission_classes([IsAdminUser])
+def scrape_news(request):
+    """Trigger news scraping via API endpoint."""
+    try:
+        limit = request.data.get("limit", 5)
+        source = request.data.get("source", "all")
+
+        # Run the scraping command
+        call_command("scrape_kenya_sports", limit=limit, source=source)
+
+        return Response({
+            "status": "success",
+            "message": f"News scraping completed for source: {source}",
+        })
+    except Exception as e:
+        return Response({
+            "status": "error",
+            "message": str(e),
+        }, status=500)
