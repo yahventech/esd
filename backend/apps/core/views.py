@@ -1,7 +1,9 @@
+from django.contrib.auth import get_user_model
+from django.db.models import Count, Sum
 from django.http import JsonResponse
 from django.core.management import call_command
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAdminUser
+from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.response import Response
 
 from apps.categories.models import Category
