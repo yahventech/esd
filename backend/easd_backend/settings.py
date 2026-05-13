@@ -134,6 +134,8 @@ DATABASES = {
 # Override with DATABASE_URL if provided
 DATABASE_URL = env("DATABASE_URL", default="")
 if DATABASE_URL:
+    import logging
+    logger = logging.getLogger(__name__)
     import re
     match = re.match(r'postgresql://([^:]+):([^@]+)@([^:]+):(\d+)/(.+)', DATABASE_URL)
     if match:
@@ -145,6 +147,11 @@ if DATABASE_URL:
             "HOST": match.group(3),
             "PORT": match.group(4),
         }
+        logger.info(f"Database configured: PostgreSQL at {match.group(3)}:{match.group(4)}/{match.group(5)}")
+    else:
+        logger.warning("Invalid DATABASE_URL format, falling back to SQLite")
+else:
+    logger.info("No DATABASE_URL provided, using SQLite")
 
 AUTH_USER_MODEL = "users.User"
 
@@ -178,8 +185,14 @@ DEFAULT_FILE_STORAGE = env("DJANGO_DEFAULT_FILE_STORAGE", default="")
 if not DEFAULT_FILE_STORAGE:
     if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and AWS_STORAGE_BUCKET_NAME and AWS_S3_ENDPOINT_URL:
         DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"R2 storage configured: bucket={AWS_STORAGE_BUCKET_NAME}, endpoint={AWS_S3_ENDPOINT_URL}")
     else:
         DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info("R2 credentials not provided, using local file storage")
 AWS_DEFAULT_ACL = None
 AWS_QUERYSTRING_AUTH = False
 AWS_S3_ADDRESSING_STYLE = env("AWS_S3_ADDRESSING_STYLE", default="virtual")
@@ -258,3 +271,99 @@ LIVE_SYNC_INTERVAL_SECONDS = env("LIVE_SYNC_INTERVAL_SECONDS", default=60, cast=
 # Frontend integration — where the Vite app reaches us from. Used by emails,
 # absolute-URL helpers, and any view that needs to embed a public link.
 FRONTEND_BASE_URL = env("FRONTEND_BASE_URL", default="http://localhost:5173")
+
+# Logging configuration
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        'file': {
+            'class': 'logging.FileHandler',
+            'filename': 'django.log',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console', 'file'],
+        'level': env('DJANGO_LOG_LEVEL', default='INFO'),
+    },
+    'loggers': {
+        # Database connection logging
+        'django.db.backends': {
+            'handlers': ['console', 'file'],
+            'level': env('DJANGO_LOG_LEVEL', default='INFO'),
+            'propagate': False,
+        },
+        # Database operations logging
+        'django.db': {
+            'handlers': ['console', 'file'],
+            'level': env('DJANGO_LOG_LEVEL', default='INFO'),
+            'propagate': False,
+        },
+        # R2/S3 storage logging
+        'storages': {
+            'handlers': ['console', 'file'],
+            'level': env('DJANGO_LOG_LEVEL', default='INFO'),
+            'propagate': False,
+        },
+        'boto3': {
+            'handlers': ['console', 'file'],
+            'level': env('DJANGO_LOG_LEVEL', default='INFO'),
+            'propagate': False,
+        },
+        'botocore': {
+            'handlers': ['console', 'file'],
+            'level': env('DJANGO_LOG_LEVEL', default='INFO'),
+            'propagate': False,
+        },
+        # File upload logging
+        'django.core.files': {
+            'handlers': ['console', 'file'],
+            'level': env('DJANGO_LOG_LEVEL', default='INFO'),
+            'propagate': False,
+        },
+        # Django request/response logging
+        'django.request': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        # Django security logging
+        'django.security': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        # Channels/WebSocket logging
+        'channels': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'daphne': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        # API Football logging
+        'requests': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
