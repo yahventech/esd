@@ -24,7 +24,7 @@ from django.core.management.base import BaseCommand
 from django.utils.text import slugify
 
 from apps.categories.models import Category
-from apps.stories.models import Story
+from apps.stories.models import Story, Tag
 
 
 class Command(BaseCommand):
@@ -71,6 +71,7 @@ class Command(BaseCommand):
             self.stdout.write(f"\nScraping {source_name}...")
             try:
                 stories = scraper_func(limit)
+                self.stdout.write(f"Found {len(stories)} story candidates from {source_name}")
                 created_count = self.create_stories(stories, dry_run)
                 total_created += created_count
                 self.stdout.write(
@@ -94,12 +95,20 @@ class Command(BaseCommand):
         """Create Story objects from scraped data, skipping duplicates."""
         created_count = 0
         sports_category = Category.objects.filter(slug="sports").first()
+        if sports_category is None:
+            self.stdout.write(
+                self.style.WARNING("Sports category not found; stories will be created without a category.")
+            )
 
         for story_data in scraped_stories:
-            # Skip if story with similar title exists (within last 30 days)
+            headline = story_data["title"].strip()
+            body = story_data.get("content") or story_data.get("summary", "")
+            summary = story_data.get("summary", "")
+
+            # Skip if story with similar headline exists (within last 30 days)
             thirty_days_ago = datetime.now() - timedelta(days=30)
             existing = Story.objects.filter(
-                title__icontains=story_data["title"][:50],  # First 50 chars
+                headline__icontains=headline[:50],
                 published_at__gte=thirty_days_ago
             ).exists()
 
@@ -107,25 +116,26 @@ class Command(BaseCommand):
                 continue
 
             if dry_run:
-                self.stdout.write(f"Would create: {story_data['title']}")
+                self.stdout.write(f"Would create: {headline}")
                 created_count += 1
                 continue
 
-            # Create the story
             story = Story.objects.create(
-                title=story_data["title"],
-                slug=slugify(story_data["title"])[:100],
-                summary=story_data.get("summary", "")[:500],
-                content=story_data.get("content", ""),
-                author="Sports News Bot",
+                headline=headline,
+                summary=summary[:500],
+                body=body,
+                author=None,
                 status="published",
-                placement="",
+                placement="none",
                 placement_rank=0,
+                story_format="news",
                 published_at=story_data.get("published_at", datetime.now()),
-                source_url=story_data.get("url"),
                 category=sports_category,
-                tags=["kenya", "sports"],
             )
+
+            for tag_name in ["kenya", "sports"]:
+                tag, _ = Tag.objects.get_or_create(name=tag_name)
+                story.tags.add(tag)
 
             created_count += 1
 
