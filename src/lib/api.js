@@ -3,6 +3,9 @@
 
 const API_BASE =
   import.meta.env.VITE_API_URL?.replace(/\/$/, '') || 'https://esd-biau.onrender.com';
+const R2_MEDIA_BASE =
+  import.meta.env.VITE_R2_MEDIA_BASE?.replace(/\/$/, '') ||
+  'https://pub-acac0a4d8fc64b5c9268945d8a688244.r2.dev/media';
 
 const TOKEN_KEY = 'easd.access';
 const REFRESH_KEY = 'easd.refresh';
@@ -65,6 +68,26 @@ async function request(path, { method = 'GET', body, auth = false, retry = true 
   const text = await res.text();
   const data = text ? (() => { try { return JSON.parse(text); } catch { return text; } })() : null;
 
+  const normalizeMediaUrl = (value) => {
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (trimmed.startsWith('/media/')) {
+        return `${R2_MEDIA_BASE}${trimmed}`;
+      }
+      if (/^https?:\/\/(?:esd-biau\.onrender\.com|localhost|127\.0\.0\.1)(?::\d+)?\/media\//i.test(trimmed)) {
+        return trimmed.replace(/^(https?:\/\/(?:esd-biau\.onrender\.com|localhost|127\.0\.0\.1)(?::\d+)?)(\/media\/.*)$/i, `${R2_MEDIA_BASE}$2`);
+      }
+      return trimmed;
+    }
+    if (Array.isArray(value)) {
+      return value.map(normalizeMediaUrl);
+    }
+    if (value && typeof value === 'object') {
+      return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, normalizeMediaUrl(item)]));
+    }
+    return value;
+  };
+
   if (!res.ok) {
     const err = new Error(
       (data && (data.detail || data.message)) || `${res.status} ${res.statusText}`
@@ -73,7 +96,7 @@ async function request(path, { method = 'GET', body, auth = false, retry = true 
     err.data = data;
     throw err;
   }
-  return data;
+  return normalizeMediaUrl(data);
 }
 
 // --- High-level API surface ---
