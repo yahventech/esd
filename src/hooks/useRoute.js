@@ -13,7 +13,11 @@ const RESERVED_TOP_LEVEL = new Set(['gossip', 'opinion']);
 function parse(hash) {
   const clean = (hash || '').replace(/^#\/?/, '').replace(/\/$/, '');
   if (!clean) return { type: 'home' };
-  const parts = clean.split('/').filter(Boolean);
+  const parts = clean.split('/').filter(Boolean).map(decodeURIComponent);
+  // /tag/<slug> — dedicated hashtag page.
+  if (parts[0] === 'tag') {
+    return { type: 'tag', tagSlug: parts[1] || null };
+  }
   if (RESERVED_TOP_LEVEL.has(parts[0])) {
     return { type: parts[0], sportSlug: parts[1] || null };
   }

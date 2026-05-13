@@ -60,6 +60,15 @@ export default function App() {
           initialCategorySlug={route.sportSlug || null}
           emptyMessage="No opinion pieces published yet."
         />
+      ) : route.type === 'tag' && route.tagSlug ? (
+        <StoryListPage
+          key={`tag-${route.tagSlug}`}
+          title={`#${route.tagSlug.replace(/-/g, ' ')}`}
+          accent="from-gold to-emerald"
+          subtitle="Every story filed under this hashtag."
+          filterParams={`tags__slug=${encodeURIComponent(route.tagSlug)}`}
+          emptyMessage="Nothing tagged here yet."
+        />
       ) : (
         <>
           <div id="home">

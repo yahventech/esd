@@ -1,14 +1,37 @@
 // EASD Component — BreakingNewsTicker
 // ESPN "Bottom Line" inspired scrolling news ticker, fed by the DRF backend.
+// On a sport-category route (#/<sport>/...) it switches to the category-scoped
+// breaking feed so the ticker only surfaces alerts for the sport in view.
 
+import { useEffect, useState } from 'react';
 import { Zap } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
+import { api } from '../lib/api';
 import { scrollToSection } from '../utils/helpers';
+import { useRoute } from '../hooks/useRoute';
 
 export default function BreakingNewsTicker() {
   const { breakingNews } = useAppData();
-  if (!breakingNews.length) return null;
-  const doubled = [...breakingNews, ...breakingNews];
+  const [route] = useRoute();
+  const [scoped, setScoped] = useState(null);
+
+  // Pick the active sport slug from the route — only sport pages need scoping.
+  // Tag / gossip / opinion routes keep the global ticker because they are
+  // intentionally cross-sport surfaces.
+  const sportSlug = (route.type === 'category' || route.type === 'section') ? route.categorySlug : null;
+
+  useEffect(() => {
+    if (!sportSlug) { setScoped(null); return; }
+    let alive = true;
+    api.stories.breaking(sportSlug)
+      .then((items) => { if (alive) setScoped(Array.isArray(items) ? items : []); })
+      .catch(() => { if (alive) setScoped([]); });
+    return () => { alive = false; };
+  }, [sportSlug]);
+
+  const items = sportSlug && scoped !== null ? scoped : breakingNews;
+  if (!items.length) return null;
+  const doubled = [...items, ...items];
 
   return (
     <div className="fixed top-14 sm:top-16 left-0 right-0 z-40 bg-charcoal/95 backdrop-blur-sm border-b border-emerald/10 overflow-hidden">

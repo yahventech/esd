@@ -1,9 +1,11 @@
 // EASD Component — Hero
 // ESPN-inspired immersive hero section. Reads live data from the DRF backend via AppDataContext.
 
-import { ArrowRight, Play, Clock, MessageSquare, TrendingUp, Loader2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { ArrowRight, Play, Clock, MessageSquare, TrendingUp, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 import { getCategoryBadge, getFormatBadge, scrollToSection } from '../utils/helpers';
+import StoryReader from './StoryReader';
 
 function splitHeadline(headline) {
   const words = (headline || '').split(' ');
@@ -16,10 +18,41 @@ function splitHeadline(headline) {
   ];
 }
 
-export default function Hero() {
-  const { hero, trending, matches, loading } = useAppData();
+function tagHref(t) {
+  const slug = (t.slug || t.tag || t.name || '').toString().toLowerCase().replace(/^#+/, '');
+  return `#/tag/${encodeURIComponent(slug)}`;
+}
 
-  if (loading || !hero) {
+export default function Hero() {
+  const { hero, featured, trending, matches, loading } = useAppData();
+  const [openStory, setOpenStory] = useState(null);
+  const [slideIdx, setSlideIdx] = useState(0);
+
+  // Compose hero + featured into a mixed-category slide deck. Deduped by slug
+  // so the headline story doesn't repeat if it's also flagged as featured.
+  const slides = useMemo(() => {
+    const seen = new Set();
+    const all = [hero, ...(featured || [])].filter(Boolean);
+    return all.filter((s) => {
+      if (!s || seen.has(s.slug)) return false;
+      seen.add(s.slug);
+      return true;
+    });
+  }, [hero, featured]);
+
+  // Bound the slide index whenever the deck size changes.
+  useEffect(() => {
+    if (slideIdx >= slides.length) setSlideIdx(0);
+  }, [slides.length, slideIdx]);
+
+  // Auto-advance every 7s, paused while a modal is open.
+  useEffect(() => {
+    if (slides.length < 2 || openStory) return undefined;
+    const id = setInterval(() => setSlideIdx((i) => (i + 1) % slides.length), 7000);
+    return () => clearInterval(id);
+  }, [slides.length, openStory]);
+
+  if (loading || !slides.length) {
     return (
       <section className="relative min-h-[70svh] flex items-center justify-center bg-navy">
         <Loader2 size={36} className="text-gold/60 animate-spin" />
@@ -27,24 +60,28 @@ export default function Hero() {
     );
   }
 
-  const badge = getCategoryBadge(hero.category);
-  const fmt = getFormatBadge(hero.format);
-  const heroTags = Array.isArray(hero.tags) ? hero.tags : [];
-  const [line1, line2, line3] = splitHeadline(hero.headline);
+  const current = slides[Math.min(slideIdx, slides.length - 1)];
+  const badge = getCategoryBadge(current.category);
+  const fmt = getFormatBadge(current.format);
+  const heroTags = Array.isArray(current.tags) ? current.tags : [];
+  const [line1, line2, line3] = splitHeadline(current.headline);
   const featuredMatch = matches.find((m) => m.is_featured && m.status === 'LIVE')
                      || matches.find((m) => m.status === 'LIVE')
                      || matches[0];
+  const prev = () => setSlideIdx((i) => (i - 1 + slides.length) % slides.length);
+  const next = () => setSlideIdx((i) => (i + 1) % slides.length);
 
   return (
     <section className="relative min-h-[100svh] flex items-end overflow-hidden pt-24">
       {/* Layered background */}
       <div className="absolute inset-0 pointer-events-none">
-        {hero.coverImage && (
+        {current.coverImage && (
           <>
             <img
-              src={hero.coverImage}
+              key={current.slug}
+              src={current.coverImage}
               alt=""
-              className="absolute inset-0 w-full h-full object-cover opacity-40"
+              className="absolute inset-0 w-full h-full object-cover opacity-40 animate-fade-in"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-navy via-navy/80 to-navy/40" />
           </>
@@ -79,9 +116,9 @@ export default function Hero() {
       <div className="relative z-10 w-full max-w-[1400px] mx-auto px-4 sm:px-6 pb-10 sm:pb-16">
         <div className="grid lg:grid-cols-12 gap-6 lg:gap-10 items-end">
           <div className="lg:col-span-8 space-y-5">
-            <div className="flex items-center gap-3 animate-fade-in" style={{ animationDelay: '0.1s', animationFillMode: 'both' }}>
+            <div className="flex items-center gap-3 animate-fade-in" style={{ animationDelay: '0.1s', animationFillMode: 'both' }} key={`badges-${current.slug}`}>
               <span className={`${badge.bg} px-2.5 py-0.5 font-display text-[11px] font-semibold uppercase tracking-[0.15em] text-white rounded`}>
-                {hero.category}
+                {current.category}
               </span>
               {fmt && fmt.label !== 'News' && (
                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded font-display text-[10px] uppercase tracking-[0.12em] border ${fmt.bg} ${fmt.text} ${fmt.border}`}>
@@ -89,7 +126,7 @@ export default function Hero() {
                   {fmt.label}
                 </span>
               )}
-              {hero.isLive && (
+              {current.isLive && (
                 <span className="flex items-center gap-1.5 text-red-400">
                   <span className="relative flex h-2 w-2">
                     <span className="animate-pulse-live absolute h-full w-full rounded-full bg-red-500 opacity-75" />
@@ -101,7 +138,9 @@ export default function Hero() {
             </div>
 
             <h1
-              className="font-display text-[clamp(2rem,5.5vw,4.5rem)] font-bold leading-[0.92] tracking-tight animate-fade-in"
+              key={`h-${current.slug}`}
+              className="font-display text-[clamp(2rem,5.5vw,4.5rem)] font-bold leading-[0.92] tracking-tight animate-fade-in cursor-pointer hover:opacity-95 transition-opacity"
+              onClick={() => setOpenStory(current)}
               style={{ animationDelay: '0.2s', animationFillMode: 'both' }}
             >
               <span className="bg-gradient-to-r from-gold via-yellow-300 to-gold bg-clip-text text-transparent">
@@ -112,20 +151,22 @@ export default function Hero() {
             </h1>
 
             <p
+              key={`s-${current.slug}`}
               className="text-base sm:text-lg text-gray-400 max-w-2xl leading-relaxed font-body animate-fade-in"
               style={{ animationDelay: '0.35s', animationFillMode: 'both' }}
             >
-              {hero.summary}
+              {current.summary}
             </p>
 
             {heroTags.length > 0 && (
               <div className="flex flex-wrap gap-1.5 animate-fade-in"
                 style={{ animationDelay: '0.4s', animationFillMode: 'both' }}>
                 {heroTags.slice(0, 6).map((t) => (
-                  <span key={t.slug || t.name}
-                    className="text-[11px] font-body text-gold/80 bg-gold/[0.06] border border-gold/20 rounded-full px-2.5 py-0.5">
+                  <a key={t.slug || t.name}
+                    href={tagHref(t)}
+                    className="text-[11px] font-body text-gold/80 bg-gold/[0.06] border border-gold/20 hover:border-gold/50 hover:text-gold rounded-full px-2.5 py-0.5 transition-colors">
                     #{t.name}
-                  </span>
+                  </a>
                 ))}
               </div>
             )}
@@ -136,7 +177,7 @@ export default function Hero() {
             >
               <button
                 type="button"
-                onClick={() => scrollToSection('top-stories')}
+                onClick={() => setOpenStory(current)}
                 className="group flex items-center gap-2.5 px-6 py-3 rounded-lg font-display text-sm font-semibold uppercase tracking-wider bg-gradient-to-r from-gold to-yellow-500 text-navy hover:shadow-lg hover:shadow-gold/20 transition-all hover:-translate-y-0.5"
               >
                 Read Full Story
@@ -156,13 +197,13 @@ export default function Hero() {
               className="flex flex-wrap items-center gap-4 text-[13px] text-gray-500 font-body animate-fade-in"
               style={{ animationDelay: '0.55s', animationFillMode: 'both' }}
             >
-              <span>By <strong className="text-gray-300 font-semibold">{hero.author}</strong></span>
+              <span>By <strong className="text-gray-300 font-semibold">{current.author}</strong></span>
               <span className="text-gray-700">|</span>
-              <span className="flex items-center gap-1"><Clock size={13} /> {hero.timestamp}</span>
+              <span className="flex items-center gap-1"><Clock size={13} /> {current.timestamp}</span>
               <span className="text-gray-700">|</span>
-              <span>{hero.readTime}</span>
+              <span>{current.readTime}</span>
               <span className="text-gray-700">|</span>
-              <span className="flex items-center gap-1"><MessageSquare size={13} /> {hero.commentCount}</span>
+              <span className="flex items-center gap-1"><MessageSquare size={13} /> {current.commentCount}</span>
             </div>
           </div>
 
@@ -228,27 +269,72 @@ export default function Hero() {
                 </span>
               </div>
               <div className="space-y-2">
-                {trending.map((t, i) => (
-                  <button
-                    key={t.tag}
-                    type="button"
-                    onClick={() => scrollToSection('top-stories')}
-                    className="w-full flex items-center justify-between group text-left"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <span className="font-mono text-[11px] text-gray-600 w-4">{i + 1}</span>
-                      <span className="text-[13px] font-body font-medium text-gray-300 group-hover:text-gold transition-colors">
-                        {t.tag}
-                      </span>
-                    </div>
-                    <span className="text-[11px] text-gray-600 font-body">{t.count} posts</span>
-                  </button>
-                ))}
+                {trending.map((t, i) => {
+                  const label = (t.tag || '').replace(/^#+/, '');
+                  const tagSlug = label.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                  return (
+                    <a
+                      key={t.tag}
+                      href={`#/tag/${encodeURIComponent(tagSlug)}`}
+                      className="w-full flex items-center justify-between group text-left"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="font-mono text-[11px] text-gray-600 w-4">{i + 1}</span>
+                        <span className="text-[13px] font-body font-medium text-gray-300 group-hover:text-gold transition-colors truncate">
+                          <span className="text-gold/60 mr-0.5">#</span>{label}
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-gray-600 font-body shrink-0 ml-2">{t.count} posts</span>
+                    </a>
+                  );
+                })}
               </div>
             </div>
           </div>
         </div>
+
+        {/* Slide controls — only when there's more than one slide. */}
+        {slides.length > 1 && (
+          <div className="mt-8 flex items-center justify-between max-w-[1400px] mx-auto px-4 sm:px-6">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={prev}
+                className="p-2 rounded-full border border-white/10 text-gray-300 hover:text-gold hover:border-gold/40 transition-colors"
+                aria-label="Previous story"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <button
+                type="button"
+                onClick={next}
+                className="p-2 rounded-full border border-white/10 text-gray-300 hover:text-gold hover:border-gold/40 transition-colors"
+                aria-label="Next story"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+            <div className="flex items-center gap-1.5">
+              {slides.map((s, i) => (
+                <button
+                  key={s.slug}
+                  type="button"
+                  onClick={() => setSlideIdx(i)}
+                  aria-label={`Go to slide ${i + 1}`}
+                  className={`h-1.5 rounded-full transition-all ${
+                    i === slideIdx ? 'w-6 bg-gold' : 'w-1.5 bg-white/20 hover:bg-white/40'
+                  }`}
+                />
+              ))}
+            </div>
+            <span className="font-mono text-[11px] text-gray-500 tabular-nums">
+              {String(slideIdx + 1).padStart(2, '0')} / {String(slides.length).padStart(2, '0')}
+            </span>
+          </div>
+        )}
       </div>
+
+      {openStory && <StoryReader story={openStory} onClose={() => setOpenStory(null)} />}
     </section>
   );
 }

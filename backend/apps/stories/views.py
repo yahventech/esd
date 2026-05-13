@@ -24,6 +24,7 @@ class StoryViewSet(viewsets.ModelViewSet):
         "is_breaking": ["exact"],
         "story_format": ["exact"],
         "category__slug": ["exact"],
+        "tags__slug": ["exact"],
     }
     search_fields = ("headline", "summary", "body", "category__name")
     ordering_fields = ("published_at", "view_count", "comment_count", "placement_rank")

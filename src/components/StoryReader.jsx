@@ -8,6 +8,7 @@ import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { useInteractionGate, FREE_LIMIT } from '../hooks/useInteractionGate';
 import { getCategoryBadge, getFormatBadge } from '../utils/helpers';
+import { renderMarkdown } from '../utils/markdown';
 
 export default function StoryReader({ story, onClose }) {
   const { user, openAuth } = useAuth();
@@ -107,23 +108,26 @@ export default function StoryReader({ story, onClose }) {
   };
 
   const body = detail?.body || story.summary || '';
-  const paragraphs = body.split(/\n{2,}/).filter(Boolean);
+  const bodyHTML = body.trim() ? renderMarkdown(body) : '';
 
   return (
-    <div className="fixed inset-0 z-[95] flex items-start sm:items-center justify-center bg-black/80 backdrop-blur-sm p-0 sm:p-6 overflow-y-auto animate-fade-in"
+    <div className="fixed inset-0 z-[95] flex items-stretch sm:items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in p-0 sm:p-6"
       onClick={onClose}>
       <div
-        className="relative w-full max-w-3xl bg-navy border border-white/10 rounded-none sm:rounded-2xl shadow-2xl shadow-black/70 my-0 sm:my-8"
+        className="relative w-full max-w-3xl bg-navy border border-white/10 rounded-none sm:rounded-2xl shadow-2xl shadow-black/70 flex flex-col h-full sm:h-auto sm:max-h-[92svh]"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-3 right-3 z-10 p-2 rounded-full bg-black/40 text-gray-400 hover:text-white hover:bg-black/70 transition-colors"
+          className="absolute top-3 right-3 z-20 p-2 rounded-full bg-black/40 text-gray-400 hover:text-white hover:bg-black/70 transition-colors"
         >
           <X size={18} />
         </button>
 
+        {/* Scrollable content area — the panel itself stays fixed-height so the
+            scroll is smooth and self-contained instead of dragging the whole overlay. */}
+        <div className="overflow-y-auto overscroll-contain flex-1 rounded-none sm:rounded-2xl">
         <div className={`relative h-48 sm:h-64 rounded-t-none sm:rounded-t-2xl overflow-hidden bg-gradient-to-br ${
           story.gradient || 'from-navy-200 via-navy-100 to-charcoal'
         }`}>
@@ -177,10 +181,12 @@ export default function StoryReader({ story, onClose }) {
           {tags.length > 0 && (
             <div className="mb-6 flex flex-wrap gap-1.5">
               {tags.map((t) => (
-                <span key={t.slug || t.name}
-                  className="text-[11px] font-body text-gold/90 bg-gold/[0.08] border border-gold/20 rounded-full px-2.5 py-0.5">
+                <a key={t.slug || t.name}
+                  href={`#/tag/${encodeURIComponent((t.slug || t.name).toString().toLowerCase())}`}
+                  onClick={() => onClose?.()}
+                  className="text-[11px] font-body text-gold/90 bg-gold/[0.08] border border-gold/20 hover:border-gold/50 hover:text-gold rounded-full px-2.5 py-0.5 transition-colors">
                   #{t.name}
-                </span>
+                </a>
               ))}
             </div>
           )}
@@ -208,9 +214,10 @@ export default function StoryReader({ story, onClose }) {
           {loading ? (
             <div className="py-8 flex justify-center"><Loader2 className="animate-spin text-gold/60" /></div>
           ) : (
-            <div className="prose prose-invert max-w-none text-gray-300 font-body leading-relaxed space-y-4">
-              {paragraphs.map((p, i) => <p key={i} className="text-[15px]">{p}</p>)}
-              {!paragraphs.length && <p className="text-gray-500 italic">The full piece is being edited — check back soon.</p>}
+            <div className="story-body font-body text-gray-300 leading-relaxed">
+              {bodyHTML
+                ? <div dangerouslySetInnerHTML={{ __html: bodyHTML }} />
+                : <p className="text-gray-500 italic">The full piece is being edited — check back soon.</p>}
             </div>
           )}
 
@@ -266,6 +273,7 @@ export default function StoryReader({ story, onClose }) {
               )}
             </div>
           </div>
+        </div>
         </div>
       </div>
     </div>

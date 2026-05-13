@@ -6,11 +6,14 @@ your own values; nothing here will break if a key is missing.
 """
 
 import json
+import logging
 import os
 from datetime import timedelta
 from pathlib import Path
 
 from dotenv import load_dotenv
+
+logger = logging.getLogger('easd_backend')
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -135,8 +138,6 @@ DATABASES = {
 # Override with DATABASE_URL if provided
 DATABASE_URL = env("DATABASE_URL", default="")
 if DATABASE_URL:
-    import logging
-    logger = logging.getLogger('easd_backend')
     import re
     match = re.match(r'postgresql://([^:]+):([^@]+)@([^:]+):(\d+)/(.+)', DATABASE_URL)
     if match:
@@ -186,13 +187,9 @@ DEFAULT_FILE_STORAGE = env("DJANGO_DEFAULT_FILE_STORAGE", default="")
 if not DEFAULT_FILE_STORAGE:
     if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and AWS_STORAGE_BUCKET_NAME and AWS_S3_ENDPOINT_URL:
         DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
-        import logging
-        logger = logging.getLogger('easd_backend')
         logger.info(f"R2 storage configured: bucket={AWS_STORAGE_BUCKET_NAME}, endpoint={AWS_S3_ENDPOINT_URL}")
     else:
         DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
-        import logging
-        logger = logging.getLogger('easd_backend')
         logger.info("R2 credentials not provided, using local file storage")
 AWS_DEFAULT_ACL = None
 AWS_QUERYSTRING_AUTH = False

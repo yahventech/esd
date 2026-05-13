@@ -8,6 +8,7 @@ import {
   BulkActionBar, BulkCheckbox, Button, ConfirmDialog, EmptyState, Field, Modal, Select,
   Spinner, TagInput, TextArea, TextInput, Toggle, apiErrorMessage, bulkRemove, useBulkSelect, useFormState,
 } from './shared';
+import MarkdownEditor from './MarkdownEditor';
 
 const STATUS_OPTIONS = [
   { value: 'draft', label: 'Draft' },
@@ -186,8 +187,8 @@ function StoryForm({ editing, onSaved, onCancel, showToast }) {
         <TextArea rows={2} value={form.summary} onChange={(v) => setField('summary', v)} />
       </Field>
 
-      <Field label="Body" hint="Separate paragraphs with a blank line.">
-        <TextArea rows={8} value={form.body} onChange={(v) => setField('body', v)} />
+      <Field label="Body" hint="Markdown supported — **bold**, *italic*, ## heading, > quote, lists, [links](https://…). Separate paragraphs with a blank line.">
+        <MarkdownEditor rows={10} value={form.body} onChange={(v) => setField('body', v)} />
       </Field>
 
       <Field label="Cover image" hint="Optional — up to 4 MB. Falls back to the gradient below when empty.">

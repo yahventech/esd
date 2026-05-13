@@ -154,10 +154,12 @@ export default function StoryListPage({
                     {tags.length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-1">
                         {tags.slice(0, 3).map((t) => (
-                          <span key={t.slug || t.name}
-                            className="text-[10px] font-body text-gold/80 bg-gold/[0.06] border border-gold/15 rounded-full px-2 py-0.5">
+                          <a key={t.slug || t.name}
+                            href={`#/tag/${encodeURIComponent((t.slug || t.name).toString().toLowerCase())}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-[10px] font-body text-gold/80 bg-gold/[0.06] border border-gold/15 hover:border-gold/40 hover:text-gold rounded-full px-2 py-0.5 transition-colors">
                             #{t.name}
-                          </span>
+                          </a>
                         ))}
                       </div>
                     )}

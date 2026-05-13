@@ -110,7 +110,7 @@ export const api = {
     featured:    () => request('/api/stories/featured/'),
     top:         (limit = 5) => request(`/api/stories/top/?limit=${limit}`),
     editorsPicks:() => request('/api/stories/editors-picks/'),
-    breaking:    () => request('/api/stories/breaking/'),
+    breaking:    (categorySlug = '') => request(`/api/stories/breaking/${categorySlug ? `?category=${encodeURIComponent(categorySlug)}` : ''}`),
     trending:    () => request('/api/stories/trending/'),
     list:        (params = '') => request(`/api/stories/${params ? `?${params}` : ''}`),
     detail:      (slug) => request(`/api/stories/${slug}/`),
