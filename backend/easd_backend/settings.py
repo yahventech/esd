@@ -102,6 +102,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "easd_backend.middleware.RequestLoggingMiddleware",
 ]
 
 ROOT_URLCONF = "easd_backend.urls"
@@ -135,7 +136,7 @@ DATABASES = {
 DATABASE_URL = env("DATABASE_URL", default="")
 if DATABASE_URL:
     import logging
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger('easd_backend')
     import re
     match = re.match(r'postgresql://([^:]+):([^@]+)@([^:]+):(\d+)/(.+)', DATABASE_URL)
     if match:
@@ -186,12 +187,12 @@ if not DEFAULT_FILE_STORAGE:
     if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and AWS_STORAGE_BUCKET_NAME and AWS_S3_ENDPOINT_URL:
         DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
         import logging
-        logger = logging.getLogger(__name__)
+        logger = logging.getLogger('easd_backend')
         logger.info(f"R2 storage configured: bucket={AWS_STORAGE_BUCKET_NAME}, endpoint={AWS_S3_ENDPOINT_URL}")
     else:
         DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
         import logging
-        logger = logging.getLogger(__name__)
+        logger = logging.getLogger('easd_backend')
         logger.info("R2 credentials not provided, using local file storage")
 AWS_DEFAULT_ACL = None
 AWS_QUERYSTRING_AUTH = False
@@ -278,8 +279,9 @@ LOGGING = {
     'disable_existing_loggers': False,
     'formatters': {
         'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'format': '[{levelname}] {asctime} {name} - {message}',
             'style': '{',
+            'datefmt': '%Y-%m-%d %H:%M:%S',
         },
         'simple': {
             'format': '{levelname} {message}',
@@ -290,79 +292,81 @@ LOGGING = {
         'console': {
             'class': 'logging.StreamHandler',
             'formatter': 'verbose',
-        },
-        'file': {
-            'class': 'logging.FileHandler',
-            'filename': 'django.log',
-            'formatter': 'verbose',
+            'stream': 'ext://sys.stdout',
         },
     },
     'root': {
-        'handlers': ['console', 'file'],
+        'handlers': ['console'],
         'level': env('DJANGO_LOG_LEVEL', default='INFO'),
     },
     'loggers': {
         # Database connection logging
         'django.db.backends': {
-            'handlers': ['console', 'file'],
+            'handlers': ['console'],
             'level': env('DJANGO_LOG_LEVEL', default='INFO'),
             'propagate': False,
         },
         # Database operations logging
         'django.db': {
-            'handlers': ['console', 'file'],
+            'handlers': ['console'],
             'level': env('DJANGO_LOG_LEVEL', default='INFO'),
             'propagate': False,
         },
         # R2/S3 storage logging
         'storages': {
-            'handlers': ['console', 'file'],
+            'handlers': ['console'],
             'level': env('DJANGO_LOG_LEVEL', default='INFO'),
             'propagate': False,
         },
         'boto3': {
-            'handlers': ['console', 'file'],
+            'handlers': ['console'],
             'level': env('DJANGO_LOG_LEVEL', default='INFO'),
             'propagate': False,
         },
         'botocore': {
-            'handlers': ['console', 'file'],
+            'handlers': ['console'],
             'level': env('DJANGO_LOG_LEVEL', default='INFO'),
             'propagate': False,
         },
         # File upload logging
         'django.core.files': {
-            'handlers': ['console', 'file'],
+            'handlers': ['console'],
             'level': env('DJANGO_LOG_LEVEL', default='INFO'),
             'propagate': False,
         },
         # Django request/response logging
         'django.request': {
-            'handlers': ['console', 'file'],
-            'level': 'INFO',
+            'handlers': ['console'],
+            'level': env('DJANGO_LOG_LEVEL', default='INFO'),
             'propagate': False,
         },
         # Django security logging
         'django.security': {
-            'handlers': ['console', 'file'],
-            'level': 'INFO',
+            'handlers': ['console'],
+            'level': env('DJANGO_LOG_LEVEL', default='INFO'),
             'propagate': False,
         },
         # Channels/WebSocket logging
         'channels': {
-            'handlers': ['console', 'file'],
-            'level': 'INFO',
+            'handlers': ['console'],
+            'level': env('DJANGO_LOG_LEVEL', default='INFO'),
             'propagate': False,
         },
         'daphne': {
-            'handlers': ['console', 'file'],
-            'level': 'INFO',
+            'handlers': ['console'],
+            'level': env('DJANGO_LOG_LEVEL', default='INFO'),
             'propagate': False,
         },
         # API Football logging
         'requests': {
-            'handlers': ['console', 'file'],
-            'level': 'INFO',
+            'handlers': ['console'],
+            'level': env('DJANGO_LOG_LEVEL', default='INFO'),
+            'propagate': False,
+        },
+        # Custom app logging
+        'easd_backend': {
+            'handlers': ['console'],
+            'level': env('DJANGO_LOG_LEVEL', default='INFO'),
             'propagate': False,
         },
     },
