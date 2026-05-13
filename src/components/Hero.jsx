@@ -218,7 +218,7 @@ export default function Hero() {
             )}
 
             <div
-              className="rounded-xl bg-navy-100/60 backdrop-blur-sm border border-white/[0.06] p-4 animate-fade-in"
+              className="hidden lg:block rounded-xl bg-navy-100/60 backdrop-blur-sm border border-white/[0.06] p-4 animate-fade-in"
               style={{ animationDelay: '0.5s', animationFillMode: 'both' }}
             >
               <div className="flex items-center gap-2 mb-3">
