@@ -2,7 +2,7 @@
 // Grid of finished matches with final scores. Click a card to view the event timeline.
 
 import { useState } from 'react';
-import { Trophy, Clock } from 'lucide-react';
+import { Trophy, Clock, ChevronDown } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 import { useScrollAnimation } from '../hooks/useScrollAnimation';
 import { MatchDetailModal } from './LiveScores';
@@ -83,7 +83,9 @@ export default function MatchResults() {
   const results = matches.filter((m) => m.status === 'FT');
   if (!results.length) return null;
 
-  const shown = showAll ? results : results.slice(0, 6);
+  const PREVIEW_COUNT = 3;
+  const shown = showAll ? results : results.slice(0, PREVIEW_COUNT);
+  const hasMore = results.length > PREVIEW_COUNT;
 
   return (
     <section className="relative py-10 sm:py-14 bg-gradient-to-b from-navy to-charcoal/60">
@@ -91,7 +93,7 @@ export default function MatchResults() {
         ref={ref}
         className={`max-w-[1400px] mx-auto px-4 sm:px-6 transition-all duration-700 ${
           visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-        }`}
+        } ${showAll ? '' : 'opacity-70'}`}
       >
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
@@ -104,22 +106,36 @@ export default function MatchResults() {
               {results.length} Final
             </span>
           </div>
-          {results.length > 6 && (
-            <button
-              type="button"
-              onClick={() => setShowAll((v) => !v)}
-              className="font-display text-[12px] uppercase tracking-wider text-gold/70 hover:text-gold transition-colors"
-            >
-              {showAll ? 'Show less' : `Show all ${results.length}`}
-            </button>
+        </div>
+
+        <div className="relative">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {shown.map((m) => (
+              <ResultCard key={m.id} match={m} onOpen={setSelected} />
+            ))}
+          </div>
+
+          {/* Fade-out mask + expand affordance — only when collapsed and more remain */}
+          {!showAll && hasMore && (
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-navy via-navy/80 to-transparent" />
           )}
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {shown.map((m) => (
-            <ResultCard key={m.id} match={m} onOpen={setSelected} />
-          ))}
-        </div>
+        {hasMore && (
+          <div className="mt-4 flex justify-center">
+            <button
+              type="button"
+              onClick={() => setShowAll((v) => !v)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-gold/30 bg-gold/[0.04] hover:bg-gold/10 hover:border-gold/60 transition-colors font-display text-[12px] uppercase tracking-wider text-gold"
+            >
+              {showAll ? 'Show less' : `Show all ${results.length} results`}
+              <ChevronDown
+                size={14}
+                className={`transition-transform ${showAll ? 'rotate-180' : ''}`}
+              />
+            </button>
+          </div>
+        )}
       </div>
       {selected && <MatchDetailModal match={selected} onClose={() => setSelected(null)} />}
     </section>
