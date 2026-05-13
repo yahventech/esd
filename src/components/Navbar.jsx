@@ -70,6 +70,9 @@ export default function Navbar({ navigate, route }) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  // Mobile accordion state — only one category's sections panel is expanded at a time.
+  const [mobileOpenCategory, setMobileOpenCategory] = useState(null);
+  const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   // openCategory drives the desktop mega-menu. Special value '__sports__' means
   // the unified Sports dropdown is open; any other value is a category slug
   // (kept for the mobile per-category accordion).
@@ -135,6 +138,13 @@ export default function Navbar({ navigate, route }) {
     window.addEventListener('resize', handler);
     return () => window.removeEventListener('resize', handler);
   }, []);
+
+  useEffect(() => {
+    if (!mobileOpen) {
+      setMobileOpenCategory(null);
+      setMobileMoreOpen(false);
+    }
+  }, [mobileOpen]);
 
   useEffect(() => {
     const closeOnOutsideClick = (event) => {
@@ -678,10 +688,10 @@ export default function Navbar({ navigate, route }) {
 
         <div
           className={`md:hidden overflow-hidden transition-all duration-300 ${
-            mobileOpen ? 'max-h-[460px] opacity-100' : 'max-h-0 opacity-0'
+            mobileOpen ? 'max-h-[85vh] opacity-100' : 'max-h-0 opacity-0'
           } bg-navy/95 backdrop-blur-xl border-t border-white/5`}
         >
-          <div className="px-4 py-3 space-y-1">
+          <div className="px-4 py-3 space-y-1 max-h-[85vh] overflow-y-auto">
             <button
               type="button"
               onClick={handleHomeClick}
@@ -692,42 +702,69 @@ export default function Navbar({ navigate, route }) {
               Home
             </button>
 
-            {/* Mobile Sports group — per-sport accordions */}
+            {/* Mobile Sports group — per-sport collapsible dropdowns */}
             {navCategories.length > 0 && (
               <div className="px-3 pt-3 pb-1 font-display text-[11px] uppercase tracking-[0.18em] text-gold/70">
                 Sports
               </div>
             )}
-            {navCategories.map((cat) => (
-              <div key={cat.slug} className="border border-white/[0.04] rounded-lg overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => handleCategoryClick(cat)}
-                  className={`block w-full text-left px-4 py-3 font-display text-sm uppercase tracking-wider transition-colors ${
-                    activeCategorySlug === cat.slug ? 'text-gold bg-gold/5' : 'text-gray-300 hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  <span className="mr-2">{cat.icon}</span>{cat.name}
-                </button>
-                {Array.isArray(cat.sections) && cat.sections.length > 0 && (
-                  <div className="bg-black/20 border-t border-white/[0.04] py-1">
-                    {cat.sections.map((s) => {
-                      const displayName = s.kind === 'players' ? 'Gossip' : s.name;
-                      return (
-                        <button
-                          key={s.id}
-                          type="button"
-                          onClick={() => handleSectionClick(cat, s)}
-                          className="block w-full text-left px-6 py-2 font-display text-[12px] uppercase tracking-wider text-gray-400 hover:text-gold hover:bg-white/5"
-                        >
-                          {s.icon && <span className="mr-2">{s.icon}</span>}{displayName}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            ))}
+            {navCategories.map((cat) => {
+              const isOpen = mobileOpenCategory === cat.slug;
+              const sections = Array.isArray(cat.sections) ? cat.sections : [];
+              const hasSections = sections.length > 0;
+              return (
+                <div key={cat.slug} className="border border-white/[0.04] rounded-lg overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (hasSections) {
+                        setMobileOpenCategory((curr) => (curr === cat.slug ? null : cat.slug));
+                      } else {
+                        handleCategoryClick(cat);
+                      }
+                    }}
+                    aria-expanded={isOpen}
+                    className={`w-full flex items-center justify-between px-4 py-3 font-display text-sm uppercase tracking-wider transition-colors ${
+                      activeCategorySlug === cat.slug ? 'text-gold bg-gold/5' : 'text-gray-300 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    <span className="flex items-center">
+                      <span className="mr-2">{cat.icon}</span>{cat.name}
+                    </span>
+                    {hasSections && (
+                      <ChevronDown
+                        size={14}
+                        className={`text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                      />
+                    )}
+                  </button>
+                  {hasSections && isOpen && (
+                    <div className="bg-black/20 border-t border-white/[0.04] py-1">
+                      <button
+                        type="button"
+                        onClick={() => handleCategoryClick(cat)}
+                        className="block w-full text-left px-6 py-2 font-display text-[12px] uppercase tracking-wider text-gold/80 hover:text-gold hover:bg-white/5"
+                      >
+                        Visit {cat.name} hub →
+                      </button>
+                      {sections.map((s) => {
+                        const displayName = s.kind === 'players' ? 'Gossip' : s.name;
+                        return (
+                          <button
+                            key={s.id}
+                            type="button"
+                            onClick={() => handleSectionClick(cat, s)}
+                            className="block w-full text-left px-6 py-2 font-display text-[12px] uppercase tracking-wider text-gray-400 hover:text-gold hover:bg-white/5"
+                          >
+                            {s.icon && <span className="mr-2">{s.icon}</span>}{displayName}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
 
             <button
               type="button"
@@ -748,16 +785,36 @@ export default function Navbar({ navigate, route }) {
               Opinion
             </button>
 
-            {moreLinks.map((item) => (
+            {/* More — collapsible group so the bottom links don't clutter the menu */}
+            <div className="border border-white/[0.04] rounded-lg overflow-hidden">
               <button
-                key={item.label}
                 type="button"
-                onClick={() => handleMoreClick(item.sectionId)}
-                className="block w-full text-left px-4 py-3 font-display text-sm uppercase tracking-wider text-gray-400 hover:text-white rounded-lg hover:bg-white/5"
+                onClick={() => setMobileMoreOpen((o) => !o)}
+                aria-expanded={mobileMoreOpen}
+                className="w-full flex items-center justify-between px-4 py-3 font-display text-sm uppercase tracking-wider text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
               >
-                {item.label}
+                <span>More</span>
+                <ChevronDown
+                  size={14}
+                  className={`text-gray-500 transition-transform ${mobileMoreOpen ? 'rotate-180' : ''}`}
+                />
               </button>
-            ))}
+              {mobileMoreOpen && (
+                <div className="bg-black/20 border-t border-white/[0.04] py-1">
+                  {moreLinks.map((item) => (
+                    <button
+                      key={item.label}
+                      type="button"
+                      onClick={() => handleMoreClick(item.sectionId)}
+                      className="block w-full text-left px-6 py-2 font-display text-[12px] uppercase tracking-wider text-gray-400 hover:text-gold hover:bg-white/5"
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {user ? (
               <>
                 <button type="button" onClick={openBookmarks}
