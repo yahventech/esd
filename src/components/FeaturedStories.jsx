@@ -296,7 +296,7 @@ export default function FeaturedStories() {
 
           <div className={`${featured.length > 0 ? 'lg:col-span-4' : 'lg:col-span-12'} space-y-6`}>
             {top.length > 0 && (
-            <div className="rounded-xl bg-navy-100/50 border border-white/[0.05] p-4">
+            <div className="hidden md:block rounded-xl bg-navy-100/50 border border-white/[0.05] p-4">
               <h3 className="font-display text-[13px] font-semibold uppercase tracking-[0.12em] text-gold mb-3 flex items-center gap-2">
                 <span className="w-5 h-5 rounded bg-gold/10 flex items-center justify-center">
                   <TrendingIcon />
