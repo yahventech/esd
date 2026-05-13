@@ -11,11 +11,22 @@ import StoryReader from './StoryReader';
 
 export default function SportCategories() {
   const [ref, visible] = useScrollAnimation();
-  const { categories } = useAppData();
+  const { categories: feedCategories } = useAppData();
+  const [categories, setCategories] = useState(feedCategories);
   const [active, setActive] = useState(null);
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [categoriesLoading, setCategoriesLoading] = useState(feedCategories.length === 0);
+  const [categoriesError, setCategoriesError] = useState(null);
   const [open, setOpen] = useState(null);
+
+  useEffect(() => {
+    setCategories(feedCategories);
+    if (feedCategories.length) {
+      setCategoriesLoading(false);
+      setCategoriesError(null);
+    }
+  }, [feedCategories]);
 
   useEffect(() => {
     if (!active) { setArticles([]); return; }
@@ -27,6 +38,31 @@ export default function SportCategories() {
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, [active]);
+
+  useEffect(() => {
+    if (feedCategories.length || categories.length) return;
+
+    let alive = true;
+    setCategoriesLoading(true);
+    setCategoriesError(null);
+
+    api.categories.list()
+      .then((list) => {
+        if (!alive) return;
+        const items = Array.isArray(list) ? list : (list?.results || []);
+        setCategories(items);
+      })
+      .catch((err) => {
+        if (!alive) return;
+        setCategoriesError(err.message || 'Failed to load sports categories');
+        setCategories([]);
+      })
+      .finally(() => {
+        if (alive) setCategoriesLoading(false);
+      });
+
+    return () => { alive = false; };
+  }, [feedCategories.length, categories.length]);
 
   return (
     <section className="relative py-10 sm:py-14 bg-charcoal">
@@ -48,39 +84,49 @@ export default function SportCategories() {
           className="flex gap-3 overflow-x-auto pb-3"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
-          {categories.map((cat) => {
-            const isActive = active === cat.slug;
-            return (
-              <button
-                key={cat.slug}
-                onClick={() => setActive(isActive ? null : cat.slug)}
-                className={`flex-shrink-0 rounded-xl px-5 py-4 min-w-[130px] text-center transition-all duration-300 border ${
-                  isActive
-                    ? 'border-gold/40 -translate-y-1 shadow-lg shadow-gold/10'
-                    : 'border-white/[0.06] hover:border-gold/20 hover:-translate-y-0.5'
-                }`}
-                style={{
-                  background: isActive
-                    ? `linear-gradient(135deg, ${cat.color}22, ${cat.color}08)`
-                    : 'rgba(255,255,255,0.02)',
-                }}
-              >
-                <div className="text-3xl mb-2 transition-transform duration-300" style={{ transform: isActive ? 'scale(1.15)' : 'scale(1)' }}>
-                  {cat.icon}
-                </div>
-                <div className={`font-display text-[12px] font-semibold uppercase tracking-wider transition-colors ${
-                  isActive ? 'text-gold' : 'text-gray-300'
-                }`}>
-                  {cat.name}
-                </div>
-                <div className={`text-[11px] mt-1 font-body transition-colors ${
-                  isActive ? 'text-gray-300' : 'text-gray-600'
-                }`}>
-                  {cat.count} articles
-                </div>
-              </button>
-            );
-          })}
+          {categoriesLoading ? (
+            <div className="flex items-center justify-center w-full py-6">
+              <Loader2 size={20} className="text-gold animate-spin" />
+            </div>
+          ) : categories.length ? (
+            categories.map((cat) => {
+              const isActive = active === cat.slug;
+              return (
+                <button
+                  key={cat.slug}
+                  onClick={() => setActive(isActive ? null : cat.slug)}
+                  className={`flex-shrink-0 rounded-xl px-5 py-4 min-w-[130px] text-center transition-all duration-300 border ${
+                    isActive
+                      ? 'border-gold/40 -translate-y-1 shadow-lg shadow-gold/10'
+                      : 'border-white/[0.06] hover:border-gold/20 hover:-translate-y-0.5'
+                  }`}
+                  style={{
+                    background: isActive
+                      ? `linear-gradient(135deg, ${cat.color}22, ${cat.color}08)`
+                      : 'rgba(255,255,255,0.02)',
+                  }}
+                >
+                  <div className="text-3xl mb-2 transition-transform duration-300" style={{ transform: isActive ? 'scale(1.15)' : 'scale(1)' }}>
+                    {cat.icon}
+                  </div>
+                  <div className={`font-display text-[12px] font-semibold uppercase tracking-wider transition-colors ${
+                    isActive ? 'text-gold' : 'text-gray-300'
+                  }`}>
+                    {cat.name}
+                  </div>
+                  <div className={`text-[11px] mt-1 font-body transition-colors ${
+                    isActive ? 'text-gray-300' : 'text-gray-600'
+                  }`}>
+                    {cat.count} articles
+                  </div>
+                </button>
+              );
+            })
+          ) : (
+            <div className="py-4 text-sm text-gray-400 italic">
+              {categoriesError || 'No sports categories available at the moment.'}
+            </div>
+          )}
         </div>
 
         {/* Drill-down panel */}
