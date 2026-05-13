@@ -25,19 +25,25 @@ class Command(BaseCommand):
         email = opts["email"]
         password = opts["password"]
 
-        if User.objects.filter(username=username).exists():
+        user, created = User.objects.get_or_create(
+            username=username,
+            defaults={
+                "email": email,
+                "display_name": "EASD Admin",
+                "role": "admin",
+                "is_staff": True,
+                "is_superuser": True,
+            },
+        )
+
+        if not created:
             self.stdout.write(self.style.SUCCESS(
                 f"Admin exists, skipping creation: {username}"
             ))
             return
 
-        User.objects.create_superuser(
-            username=username,
-            email=email,
-            password=password,
-            role="admin",
-        )
-
+        user.set_password(password)
+        user.save(update_fields=["password"])
         self.stdout.write(self.style.SUCCESS(
             f"Admin created: {username} (role=admin)"
         ))
