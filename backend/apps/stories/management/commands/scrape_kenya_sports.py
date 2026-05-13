@@ -16,7 +16,8 @@ Idempotent: skips stories with duplicate titles/headlines.
 import json
 import re
 from datetime import datetime, timedelta
-from urllib.parse import urljoin, urlparse
+from email.utils import parsedate_to_datetime
+from urllib.parse import urljoin, urlparse, parse_qs, unquote
 
 import requests
 from bs4 import BeautifulSoup
@@ -44,7 +45,7 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             "--source",
-            choices=["bbc", "standard", "nation", "goal", "espn", "all"],
+            choices=["bbc", "standard", "nation", "goal", "espn", "bing", "all"],
             default="all",
             help="Specific source to scrape, or 'all' for all sources.",
         )
@@ -60,6 +61,7 @@ class Command(BaseCommand):
             "nation": self.scrape_nation,
             "goal": self.scrape_goal,
             "espn": self.scrape_espn,
+            "bing": self.scrape_bing_news,
         }
 
         if source_filter != "all":
@@ -94,11 +96,18 @@ class Command(BaseCommand):
     def create_stories(self, scraped_stories, dry_run=False):
         """Create Story objects from scraped data, skipping duplicates."""
         created_count = 0
-        sports_category = Category.objects.filter(slug="sports").first()
-        if sports_category is None:
-            self.stdout.write(
-                self.style.WARNING("Sports category not found; stories will be created without a category.")
-            )
+        sports_category, created = Category.objects.get_or_create(
+            slug="sports",
+            defaults={
+                "name": "Sports",
+                "icon": "⚽",
+                "color": "#10B981",
+                "is_nav": False,
+                "order": 100,
+            },
+        )
+        if created:
+            self.stdout.write(self.style.SUCCESS("Created fallback sports category 'Sports'."))
 
         for story_data in scraped_stories:
             headline = story_data["title"].strip()
@@ -141,44 +150,75 @@ class Command(BaseCommand):
 
         return created_count
 
-    def scrape_bbc_sport(self, limit=10):
-        """Scrape BBC Sport Kenya news."""
-        url = "https://www.bbc.com/sport/football/africa"
+    def _clean_html(self, html):
+        return BeautifulSoup(html or "", "html.parser").get_text(separator=" ", strip=True)
+
+    def _parse_rss_datetime(self, pub_date_text):
+        if not pub_date_text:
+            return datetime.now()
+        try:
+            return parsedate_to_datetime(pub_date_text)
+        except Exception:
+            return datetime.now()
+
+    def _unpack_redirect_url(self, url):
+        parsed = urlparse(url)
+        params = parse_qs(parsed.query)
+        if "url" in params:
+            return unquote(params["url"][0])
+        if "u" in params:
+            return unquote(params["u"][0])
+        return url
+
+    def _scrape_rss_feed(self, url, source, limit=10):
         headers = {
             "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
         }
-
         response = requests.get(url, headers=headers, timeout=30)
-        soup = BeautifulSoup(response.content, "html.parser")
-
+        soup = BeautifulSoup(response.content, "xml")
         stories = []
-        articles = soup.find_all("article", limit=limit * 2)  # Get more to filter
 
-        for article in articles[:limit]:
-            title_elem = article.find("h2") or article.find("h3")
-            if not title_elem:
+        for item in soup.find_all("item", limit=limit * 3):
+            title_elem = item.find("title")
+            link_elem = item.find("link")
+            desc_elem = item.find("description")
+            date_elem = item.find("pubDate")
+
+            if not title_elem or not link_elem:
                 continue
 
             title = title_elem.get_text().strip()
             if not self._is_kenya_related(title):
                 continue
 
-            link_elem = article.find("a")
-            url = urljoin("https://www.bbc.com", link_elem["href"]) if link_elem else ""
-
-            # Get summary if available
-            summary_elem = article.find("p")
-            summary = summary_elem.get_text().strip() if summary_elem else ""
-
+            raw_url = link_elem.get_text().strip()
             stories.append({
                 "title": title,
-                "summary": summary,
-                "url": url,
-                "source": "BBC Sport",
-                "published_at": datetime.now(),
+                "summary": self._clean_html(desc_elem.get_text() if desc_elem else ""),
+                "url": self._unpack_redirect_url(raw_url),
+                "source": source,
+                "published_at": self._parse_rss_datetime(date_elem.get_text() if date_elem else None),
             })
+            if len(stories) >= limit:
+                break
 
         return stories
+
+    def scrape_bbc_sport(self, limit=10):
+        """Scrape BBC Africa news via RSS."""
+        return self._scrape_rss_feed(
+            "https://feeds.bbci.co.uk/news/world/africa/rss.xml",
+            "BBC Africa",
+            limit,
+        )
+
+    def scrape_bing_news(self, limit=10):
+        """Scrape Kenya sports headlines from Bing News search RSS."""
+        return self._scrape_rss_feed(
+            "https://www.bing.com/news/search?q=Kenya+sports&format=rss",
+            "Bing News",
+            limit,
+        )
 
     def scrape_standard(self, limit=10):
         """Scrape The Standard Kenya sports news."""
@@ -258,92 +298,90 @@ class Command(BaseCommand):
 
     def scrape_goal(self, limit=10):
         """Scrape Goal.com Kenya news."""
-        url = "https://www.goal.com/en-ke"
+        url = "https://www.goal.com/en-ke/news"
         headers = {
             "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
         }
 
         response = requests.get(url, headers=headers, timeout=30)
         soup = BeautifulSoup(response.content, "html.parser")
-
         stories = []
-        articles = soup.find_all("article", limit=limit * 2)
 
-        for article in articles[:limit]:
-            title_elem = article.find("h2") or article.find("h3")
-            if not title_elem:
-                continue
+        script = soup.find("script", attrs={"type": "application/ld+json"})
+        if script:
+            try:
+                data = json.loads(script.string)
+                items = data.get("itemListElement") or []
+                for item in items:
+                    article = item.get("item", {})
+                    title = article.get("headline") or article.get("name")
+                    if not title or not self._is_kenya_related(title):
+                        continue
 
-            title = title_elem.get_text().strip()
-            if not self._is_kenya_related(title):
-                continue
+                    url = article.get("url") or article.get("@id")
+                    published_at = datetime.now()
+                    if article.get("datePublished"):
+                        try:
+                            published_at_text = article.get("datePublished")
+                            if published_at_text.endswith("Z"):
+                                published_at_text = published_at_text[:-1] + "+00:00"
+                            published_at = datetime.fromisoformat(published_at_text)
+                        except Exception:
+                            published_at = datetime.now()
 
-            link_elem = article.find("a")
-            url = urljoin("https://www.goal.com", link_elem["href"]) if link_elem else ""
-
-            summary_elem = article.find("p")
-            summary = summary_elem.get_text().strip() if summary_elem else ""
-
-            stories.append({
-                "title": title,
-                "summary": summary,
-                "url": url,
-                "source": "Goal.com",
-                "published_at": datetime.now(),
-            })
+                    stories.append({
+                        "title": title.strip(),
+                        "summary": article.get("description", ""),
+                        "url": url,
+                        "source": "Goal.com",
+                        "published_at": published_at,
+                    })
+                    if len(stories) >= limit:
+                        break
+            except json.JSONDecodeError:
+                pass
 
         return stories
 
     def scrape_espn(self, limit=10):
-        """Scrape ESPN Africa Kenya sports news."""
-        url = "https://www.espn.com/soccer/"
-        headers = {
-            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
-        }
-
-        response = requests.get(url, headers=headers, timeout=30)
-        soup = BeautifulSoup(response.content, "html.parser")
-
-        stories = []
-        articles = soup.find_all("article", limit=limit * 3)  # More articles to filter
-
-        for article in articles:
-            title_elem = article.find("h2") or article.find("h3") or article.find("a")
-            if not title_elem:
-                continue
-
-            title = title_elem.get_text().strip()
-            if not self._is_kenya_related(title):
-                continue
-
-            link_elem = article.find("a")
-            url = urljoin("https://www.espn.com", link_elem["href"]) if link_elem else ""
-
-            summary_elem = article.find("p")
-            summary = summary_elem.get_text().strip() if summary_elem else ""
-
-            stories.append({
-                "title": title,
-                "summary": summary,
-                "url": url,
-                "source": "ESPN",
-                "published_at": datetime.now(),
-            })
-
-            if len(stories) >= limit:
-                break
-
-        return stories
+        """Scrape ESPN soccer RSS feed."""
+        return self._scrape_rss_feed(
+            "https://www.espn.com/espn/rss/soccer/news",
+            "ESPN",
+            limit,
+        )
 
     def _is_kenya_related(self, title):
         """Check if a title is related to Kenya sports."""
-        kenya_keywords = [
-            "kenya", "kenyan", "nairobi", "gor mahia", "afc leopards",
-            "kpl", "premier league", "fkf", "harambee stars", "simba",
+        title_lower = title.lower()
+
+        kenya_terms = [
+            "kenya", "kenyan", "nairobi", "harambee", "harambee stars",
+            "gor mahia", "afc leopards", "kpl", "fkf", "simba",
             "yang", "rudisha", "kiprop", "kemboi", "makau", "wanjiru",
             "east africa", "uganda", "tanzania", "ethiopia", "somalia",
             "rwanda", "burundi", "south sudan"
         ]
 
-        title_lower = title.lower()
-        return any(keyword in title_lower for keyword in kenya_keywords)
+        east_africa_terms = [
+            "east africa", "uganda", "tanzania", "ethiopia", "somalia",
+            "rwanda", "burundi", "south sudan",
+        ]
+        sports_terms = [
+            "football", "soccer", "rugby", "athletics", "marathon",
+            "basketball", "cricket", "boxing", "netball", "sevens",
+            "afcon", "world cup", "olympic", "league", "match",
+            "score", "goal", "win", "cup", "tournament", "wnba",
+            "nba", "mls", "runner", "race", "athlete", "track",
+            "field",
+        ]
+
+        if any(term in title_lower for term in kenya_terms):
+            return True
+
+        if any(term in title_lower for term in east_africa_terms):
+            return any(term in title_lower for term in sports_terms)
+
+        return any(term in title_lower for term in sports_terms) and any(
+            term in title_lower for term in ["kenya", "kenyan", "nairobi"]
+        )

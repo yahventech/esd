@@ -5,11 +5,12 @@ This Django management command automatically scrapes the latest Kenya sports new
 ## Sources
 
 The scraper pulls from these free news sources:
-- **BBC Sport** - Africa football section
+- **BBC Sport / BBC Africa** - East Africa sports coverage
 - **The Standard** - Kenya sports news
 - **Daily Nation** - Nation Media Group sports
 - **Goal.com** - Kenya football news
 - **ESPN Africa** - African sports coverage
+- **Bing News** - Kenya sports search RSS feed
 
 ## Usage
 
@@ -70,7 +71,7 @@ requests==2.33.1
 
 ## Categories
 
-Scraped stories are automatically assigned to the "sports" category. Make sure this category exists:
+Scraped stories are automatically assigned to the "sports" category. The scraper will create a fallback category if it does not exist, but you can also seed it manually:
 
 ```python
 # In Django shell
