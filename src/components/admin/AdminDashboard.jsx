@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import {
   FileText, Video as VideoIcon, Flag, Zap, TrendingUp,
-  Layers, Shield, UserCog, X, LogOut, Tag as TagIcon, Compass,
+  Layers, Shield, UserCog, X, LogOut, Compass,
   Users as UsersIcon, BarChart3,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -20,7 +20,6 @@ import SectionsManager from './SectionsManager';
 import TeamsManager from './TeamsManager';
 import PlayersManager from './PlayersManager';
 import StatsManager from './StatsManager';
-import TagsManager from './TagsManager';
 import UsersManager from './UsersManager';
 
 const TABS = [
@@ -34,7 +33,6 @@ const TABS = [
   { id: 'trending',   label: 'Trending',   icon: TrendingUp, roles: ['editor', 'admin'] },
   { id: 'categories', label: 'Categories', icon: Layers,     roles: ['editor', 'admin'] },
   { id: 'sections',   label: 'Sub-pages',  icon: Compass,    roles: ['editor', 'admin'] },
-  { id: 'tags',       label: 'Tags',       icon: TagIcon,    roles: ['editor', 'admin'] },
   { id: 'users',      label: 'Users',      icon: UserCog,    roles: ['admin'] },
 ];
 
@@ -72,7 +70,6 @@ export default function AdminDashboard() {
       case 'trending':   return <TrendingManager {...managerProps} />;
       case 'categories': return <CategoriesManager {...managerProps} />;
       case 'sections':   return <SectionsManager {...managerProps} />;
-      case 'tags':       return <TagsManager {...managerProps} />;
       case 'users':      return <UsersManager {...managerProps} />;
       default:           return <StoriesManager {...managerProps} />;
     }

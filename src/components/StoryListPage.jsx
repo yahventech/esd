@@ -3,10 +3,11 @@
 // grid of stories filtered by `story_format`, with category-chip drill-down.
 
 import { useEffect, useMemo, useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, TrendingUp } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 import { api } from '../lib/api';
 import { getCategoryBadge, getFormatBadge } from '../utils/helpers';
+import { renderMarkdown } from '../utils/markdown';
 import StoryReader from './StoryReader';
 
 export default function StoryListPage({
@@ -16,6 +17,7 @@ export default function StoryListPage({
   filterParams,          // serialized query string, e.g. "story_format=opinion"
   initialCategorySlug,   // pre-select a sport chip on mount (e.g. from /gossip/<sport>)
   emptyMessage,
+  trendingSlug,          // optional tag slug — when set, fetch matching trending topic + show its body
 }) {
   const { categories } = useAppData();
   const [items, setItems] = useState([]);
@@ -23,6 +25,24 @@ export default function StoryListPage({
   const [error, setError] = useState(null);
   const [activeCategory, setActiveCategory] = useState(initialCategorySlug || null);
   const [open, setOpen] = useState(null);
+  const [trending, setTrending] = useState(null);
+
+  // For #/tag/<slug> pages: surface the matching trending topic's editor
+  // intro (markdown body) above the story grid. We piggy-back on the public
+  // trending endpoint instead of a per-slug lookup — the list is short.
+  useEffect(() => {
+    if (!trendingSlug) { setTrending(null); return; }
+    let alive = true;
+    api.stories.trending()
+      .then((rows) => {
+        if (!alive) return;
+        const list = Array.isArray(rows) ? rows : (rows?.results || []);
+        const match = list.find((t) => (t.slug || '') === trendingSlug);
+        setTrending(match || null);
+      })
+      .catch(() => { if (alive) setTrending(null); });
+    return () => { alive = false; };
+  }, [trendingSlug]);
 
   const query = useMemo(() => {
     const parts = [filterParams, 'page_size=40'].filter(Boolean);
@@ -59,6 +79,33 @@ export default function StoryListPage({
         </div>
         {subtitle && (
           <p className="text-gray-400 font-body text-sm sm:text-base max-w-2xl mb-6">{subtitle}</p>
+        )}
+
+        {trending && (
+          <div className="mb-7 max-w-3xl rounded-2xl border border-gold/15 bg-gradient-to-br from-gold/[0.06] via-emerald/[0.03] to-transparent p-5 sm:p-6">
+            <div className="flex items-center gap-2 mb-2">
+              <TrendingUp size={14} className="text-gold" />
+              <span className="font-display text-[11px] font-semibold uppercase tracking-[0.18em] text-gold/80">
+                Why this is trending
+              </span>
+              {trending.category_name && (
+                <span className="ml-auto inline-flex items-center px-2 py-0.5 rounded font-display text-[10px] uppercase tracking-wider bg-emerald/10 text-emerald-300 border border-emerald-500/25">
+                  {trending.category_name}
+                </span>
+              )}
+            </div>
+            {trending.body ? (
+              <div className="story-body font-body text-gray-200 leading-relaxed"
+                dangerouslySetInnerHTML={{ __html: renderMarkdown(trending.body) }} />
+            ) : (
+              <p className="text-[13px] text-gray-500 font-body italic">
+                Editors haven’t written context for this hashtag yet — the stories below speak for themselves.
+              </p>
+            )}
+            <div className="mt-3 text-[11px] text-gray-500 font-body">
+              {trending.count} posts · {trending.post_count?.toLocaleString?.() || trending.post_count || 0} mentions
+            </div>
+          </div>
         )}
 
         {/* Category filter chips */}

@@ -158,9 +158,16 @@ class TrendingTopicSerializer(serializers.ModelSerializer):
     count = serializers.CharField(source="count_display", read_only=True)
     category_slug = serializers.CharField(source="category.slug", read_only=True, default="")
     category_name = serializers.CharField(source="category.name", read_only=True, default="")
+    slug = serializers.SerializerMethodField()
 
     class Meta:
         model = TrendingTopic
-        fields = ("id", "tag", "count", "post_count", "order", "is_active",
+        fields = ("id", "tag", "slug", "count", "post_count", "order", "is_active", "body",
                   "category", "category_slug", "category_name")
-        read_only_fields = ("category_slug", "category_name")
+        read_only_fields = ("category_slug", "category_name", "slug")
+
+    def get_slug(self, obj):
+        # Mirrors the slugify the frontend uses to build #/tag/<slug> links so
+        # the dedicated trending-tag page can be reached from a list of topics.
+        from django.utils.text import slugify
+        return slugify(obj.tag)

@@ -175,6 +175,12 @@ class TrendingTopic(models.Model):
     post_count = models.PositiveIntegerField(default=0)
     order = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True)
+    # Editor-written intro shown on the dedicated #tag page. Stored as
+    # markdown so the same renderer used for story bodies can format it.
+    body = models.TextField(
+        blank=True,
+        help_text="Markdown intro shown above the story list on the trending tag's page.",
+    )
     # Nullable: a trending hashtag may be cross-sport (e.g. #AFCON2026).
     category = models.ForeignKey(
         "categories.Category", on_delete=models.SET_NULL, null=True, blank=True,

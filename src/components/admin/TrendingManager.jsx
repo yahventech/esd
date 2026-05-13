@@ -8,8 +8,9 @@ import {
   BulkActionBar, BulkCheckbox, Button, ConfirmDialog, EmptyState, Field, Modal,
   Select, Spinner, TextInput, Toggle, apiErrorMessage, bulkRemove, useBulkSelect, useFormState,
 } from './shared';
+import MarkdownEditor from './MarkdownEditor';
 
-const blank = { tag: '', post_count: 0, order: 0, is_active: true, category: '' };
+const blank = { tag: '', body: '', post_count: 0, order: 0, is_active: true, category: '' };
 
 function TrendingForm({ editing, categories, onSaved, onCancel, showToast }) {
   const [form, setField, setForm] = useFormState(blank);
@@ -20,6 +21,7 @@ function TrendingForm({ editing, categories, onSaved, onCancel, showToast }) {
   useEffect(() => {
     setForm(editing ? {
       tag: editing.tag || '',
+      body: editing.body || '',
       post_count: editing.post_count ?? 0,
       order: editing.order ?? 0,
       is_active: editing.is_active !== false,
@@ -37,6 +39,7 @@ function TrendingForm({ editing, categories, onSaved, onCancel, showToast }) {
     setError(''); setSaving(true);
     const payload = {
       tag: form.tag,
+      body: form.body || '',
       is_active: form.is_active,
       post_count: Number(form.post_count) || 0,
       order: Number(form.order) || 0,
@@ -62,6 +65,10 @@ function TrendingForm({ editing, categories, onSaved, onCancel, showToast }) {
       </Field>
       <Field label="Sport" hint="Scope this trend to a sport, or leave blank for cross-sport.">
         <Select value={form.category} onChange={(v) => setField('category', v)} options={categoryOptions} />
+      </Field>
+      <Field label="Body" hint="Markdown intro shown above the story list on this hashtag's page. Optional.">
+        <MarkdownEditor rows={6} value={form.body} onChange={(v) => setField('body', v)}
+          placeholder="Set the scene for this hashtag — why it's trending, what to watch for, key context…" />
       </Field>
       <div className="grid grid-cols-3 gap-3">
         <Field label="Post count">

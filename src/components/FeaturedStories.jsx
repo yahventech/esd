@@ -2,12 +2,12 @@
 // Editorial grid wired to the DRF backend. Bookmarks are live, clicks open a story modal.
 
 import { useEffect, useState } from 'react';
-import { Clock, MessageSquare, ChevronRight, BookOpen, Bookmark as BookmarkIcon, Loader2 } from 'lucide-react';
+import { Clock, MessageSquare, BookOpen, Bookmark as BookmarkIcon, Loader2 } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 import { useAuth } from '../context/AuthContext';
 import { useScrollAnimation } from '../hooks/useScrollAnimation';
 import { api } from '../lib/api';
-import { getCategoryBadge, getFormatBadge, scrollToSection } from '../utils/helpers';
+import { getCategoryBadge, getFormatBadge } from '../utils/helpers';
 import StoryReader from './StoryReader';
 
 function StoryCard({ story, size = 'normal', onOpen }) {
@@ -166,14 +166,33 @@ function RankedStory({ story, rank, onOpen }) {
 
 export default function FeaturedStories() {
   const [ref, visible] = useScrollAnimation();
-  const { featured, top, editorsPicks, categories, loading } = useAppData();
+  const { top, editorsPicks, categories, loading } = useAppData();
   const [open, setOpen] = useState(null);
   const [categoryFilter, setCategoryFilter] = useState(null);
+  const [allStories, setAllStories] = useState([]);
+  const [allLoading, setAllLoading] = useState(true);
   const [filteredStories, setFilteredStories] = useState([]);
   const [filterLoading, setFilterLoading] = useState(false);
 
+  // Load the most recent published stories for the main "Stories" grid. The
+  // sidebar's curated Top Stories + Editor's Picks come from the feed payload
+  // (`top`, `editorsPicks`) so we deliberately don't duplicate them here.
+  useEffect(() => {
+    let alive = true;
+    setAllLoading(true);
+    api.stories.list('page_size=24')
+      .then((res) => {
+        if (!alive) return;
+        const list = Array.isArray(res) ? res : (res?.results || []);
+        setAllStories(list);
+      })
+      .catch(() => { if (alive) setAllStories([]); })
+      .finally(() => { if (alive) setAllLoading(false); });
+    return () => { alive = false; };
+  }, []);
+
   // When a sport is picked, fetch its published stories; clearing returns to
-  // the curated featured/top/editor's-pick layout.
+  // the all-stories grid above.
   useEffect(() => {
     if (!categoryFilter) { setFilteredStories([]); return; }
     let alive = true;
@@ -192,7 +211,7 @@ export default function FeaturedStories() {
       </section>
     );
   }
-  if (!featured.length && !top.length && !editorsPicks.length) {
+  if (!allStories.length && !top.length && !editorsPicks.length && !allLoading) {
     return null;
   }
 
@@ -208,19 +227,20 @@ export default function FeaturedStories() {
           <div className="flex items-center gap-3">
             <div className="w-1 h-7 rounded-full bg-gradient-to-b from-gold to-emerald" />
             <h2 className="font-display text-xl sm:text-2xl font-bold uppercase tracking-wider">
-              <span className="bg-gradient-to-r from-gold to-yellow-400 bg-clip-text text-transparent">
-                {categoryFilter ? (categories.find((c) => c.slug === categoryFilter)?.name || 'Sport') : 'Top'}
-              </span>
-              <span className="text-white ml-2">Stories</span>
+              {categoryFilter ? (
+                <>
+                  <span className="bg-gradient-to-r from-gold to-yellow-400 bg-clip-text text-transparent">
+                    {categories.find((c) => c.slug === categoryFilter)?.name || 'Sport'}
+                  </span>
+                  <span className="text-white ml-2">Stories</span>
+                </>
+              ) : (
+                <span className="bg-gradient-to-r from-gold to-yellow-400 bg-clip-text text-transparent">
+                  Stories
+                </span>
+              )}
             </h2>
           </div>
-          <button
-            type="button"
-            onClick={() => scrollToSection('top-stories')}
-            className="hidden sm:flex items-center gap-1 font-display text-[12px] uppercase tracking-wider text-gold/70 hover:text-gold transition-colors"
-          >
-            View All <ChevronRight size={14} />
-          </button>
         </div>
 
         {/* Sport-category filter chips — pick a sport to focus the feed. */}
@@ -278,25 +298,31 @@ export default function FeaturedStories() {
           )
         )}
 
-        {/* Curated layout — only when no sport filter is active. */}
+        {/* All-stories grid + curated sidebar — only when no sport filter is active. */}
         {!categoryFilter && (
         <div className="grid lg:grid-cols-12 gap-5">
-          {featured.length > 0 && (
-            <div className="lg:col-span-8">
-              <div className="grid sm:grid-cols-2 gap-4 items-stretch">
-                <div className="sm:col-span-1">
-                  <StoryCard story={featured[0]} size="large" onOpen={setOpen} />
-                </div>
-                <div className="sm:col-span-1 grid grid-rows-2 gap-4">
-                  {featured.slice(1, 3).map((story) => (
-                    <StoryCard key={story.id} story={story} onOpen={setOpen} />
-                  ))}
-                </div>
+          <div className="lg:col-span-8">
+            {allLoading ? (
+              <div className="py-12 flex justify-center"><Loader2 size={20} className="text-gold animate-spin" /></div>
+            ) : allStories.length === 0 ? (
+              <p className="py-10 text-center text-gray-500 font-body italic">No stories published yet.</p>
+            ) : (
+              <div className="grid sm:grid-cols-2 gap-4">
+                {allStories.map((story, i) => (
+                  // Promote the most recent story to the large card so the grid still
+                  // has an editorial focal point.
+                  <StoryCard
+                    key={story.id}
+                    story={story}
+                    size={i === 0 ? 'large' : 'normal'}
+                    onOpen={setOpen}
+                  />
+                ))}
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
-          <div className={`${featured.length > 0 ? 'lg:col-span-4' : 'lg:col-span-12'} space-y-6`}>
+          <div className={`${allStories.length > 0 ? 'lg:col-span-4' : 'lg:col-span-12'} space-y-6`}>
             {top.length > 0 && (
             <div className="hidden md:block rounded-xl bg-navy-100/50 border border-white/[0.05] p-4">
               <h3 className="font-display text-[13px] font-semibold uppercase tracking-[0.12em] text-gold mb-3 flex items-center gap-2">

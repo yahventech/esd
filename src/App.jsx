@@ -17,6 +17,7 @@ import AuthModal from './components/AuthModal';
 import BackendStatus from './components/BackendStatus';
 import SportSection from './components/SportSection';
 import StoryListPage from './components/StoryListPage';
+import TrendingStrip from './components/TrendingStrip';
 import { useAuth } from './context/AuthContext';
 import { isStaffRole } from './lib/api';
 import { useRoute } from './hooks/useRoute';
@@ -67,6 +68,7 @@ export default function App() {
           accent="from-gold to-emerald"
           subtitle="Every story filed under this hashtag."
           filterParams={`tags__slug=${encodeURIComponent(route.tagSlug)}`}
+          trendingSlug={route.tagSlug}
           emptyMessage="Nothing tagged here yet."
         />
       ) : (
@@ -82,6 +84,9 @@ export default function App() {
           </div>
           <div id="top-stories">
             <FeaturedStories />
+          </div>
+          <div id="trending">
+            <TrendingStrip />
           </div>
           <div id="sports">
             <SportCategories />
