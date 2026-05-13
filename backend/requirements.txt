@@ -9,6 +9,8 @@ Pillow==11.0.0
 python-slugify==8.0.4
 requests==2.33.1
 python-dotenv==1.2.2
+django-storages[boto3]
+boto3
 beautifulsoup4==4.12.3
 lxml==5.2.2
 beautifulsoup4==4.12.3

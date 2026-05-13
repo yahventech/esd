@@ -73,6 +73,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "storages",
     # third-party
     "rest_framework",
     "rest_framework_simplejwt",
@@ -145,7 +146,34 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-MEDIA_URL = "media/"
+AWS_ACCESS_KEY_ID = env("AWS_ACCESS_KEY_ID", default="")
+AWS_SECRET_ACCESS_KEY = env("AWS_SECRET_ACCESS_KEY", default="")
+AWS_STORAGE_BUCKET_NAME = env("AWS_STORAGE_BUCKET_NAME", default="")
+AWS_S3_ENDPOINT_URL = env("AWS_S3_ENDPOINT_URL", default="")
+AWS_S3_REGION_NAME = env("AWS_S3_REGION_NAME", default="")
+AWS_S3_CUSTOM_DOMAIN = env("AWS_S3_CUSTOM_DOMAIN", default="")
+if AWS_S3_CUSTOM_DOMAIN:
+    AWS_S3_CUSTOM_DOMAIN = AWS_S3_CUSTOM_DOMAIN.replace("https://", "").replace("http://", "").rstrip("/")
+if not AWS_S3_CUSTOM_DOMAIN and AWS_S3_ENDPOINT_URL and AWS_STORAGE_BUCKET_NAME:
+    host = AWS_S3_ENDPOINT_URL.split("//", 1)[-1].rstrip("/")
+    AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.{host}"
+AWS_LOCATION = env("AWS_LOCATION", default="media")
+
+DEFAULT_FILE_STORAGE = env("DJANGO_DEFAULT_FILE_STORAGE", default="")
+if not DEFAULT_FILE_STORAGE:
+    if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and AWS_STORAGE_BUCKET_NAME and AWS_S3_ENDPOINT_URL:
+        DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+    else:
+        DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
+AWS_DEFAULT_ACL = None
+AWS_QUERYSTRING_AUTH = False
+AWS_S3_ADDRESSING_STYLE = env("AWS_S3_ADDRESSING_STYLE", default="virtual")
+AWS_S3_OBJECT_PARAMETERS = {"CacheControl": "max-age=86400"}
+
+MEDIA_URL = env(
+    "DJANGO_MEDIA_URL",
+    default=f"https://{AWS_S3_CUSTOM_DOMAIN}/{AWS_LOCATION}/" if AWS_S3_CUSTOM_DOMAIN else "media/",
+)
 MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
