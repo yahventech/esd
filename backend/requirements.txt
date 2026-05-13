@@ -15,4 +15,5 @@ beautifulsoup4==4.12.3
 lxml==5.2.2
 beautifulsoup4==4.12.3
 lxml==5.2.2
+psycopg2-binary
 gunicorn
