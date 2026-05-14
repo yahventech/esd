@@ -176,12 +176,18 @@ async function request(path, { method = 'GET', body, auth = false, retry = true 
   const normalized = normalizeMediaUrl(data);
   if (logUpload) {
     const endedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const rawMediaUrls = collectMediaUrls(data);
+    const displayMediaUrls = collectMediaUrls(normalized);
     console.info(`${UPLOAD_LOG_PREFIX} success`, {
       method,
       url,
       status: res.status,
       durationMs: Math.round(endedAt - startedAt),
-      mediaUrls: collectMediaUrls(normalized),
+      rawMediaUrls,
+      displayMediaUrls,
+      storageHint: rawMediaUrls.some((item) => /onrender\.com\/media\//i.test(item.url))
+        ? 'Backend returned Render /media URL; upload likely used local storage, not R2.'
+        : 'Backend returned an R2/S3-style media URL.',
     });
   }
   return normalized;
