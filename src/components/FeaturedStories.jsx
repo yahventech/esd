@@ -50,10 +50,11 @@ function StoryCard({ story, size = 'normal', onOpen }) {
           <img
             src={story.coverImage}
             alt=""
-            // Object-contain so editors' images are never cropped. The wrapper's
-            // gradient fills any letterbox area. Aspect-video keeps the row
-            // visually balanced even when individual images vary widely.
-            className={`block w-full ${isLarge ? 'max-h-[26rem]' : 'max-h-[15rem]'} object-contain aspect-video`}
+            // Render at the image's natural aspect — width 100%, height
+            // proportional. No forced 16:9 box, so wide news photos fill the
+            // card horizontally with no left/right letterbox gaps. The max-h
+            // is a safety cap for extreme portraits.
+            className={`block w-full h-auto ${isLarge ? 'max-h-[26rem]' : 'max-h-[18rem]'} object-contain`}
             loading="lazy"
           />
         ) : (

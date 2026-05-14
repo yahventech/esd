@@ -176,7 +176,7 @@ export default function StoryListPage({
                   >
                     {s.coverImage ? (
                       <img src={s.coverImage} alt="" loading="lazy"
-                        className="block w-full max-h-[15rem] object-contain aspect-video" />
+                        className="block w-full h-auto max-h-[18rem] object-contain" />
                     ) : (
                       <div className="w-full h-40" />
                     )}

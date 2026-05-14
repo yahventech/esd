@@ -27,13 +27,14 @@ SPORTS = [
 ]
 
 
-# Default sections every new sport gets. We deliberately keep the list narrow:
-# the general-scoped defaults (Scores, Fixtures, Standings, News, Teams,
-# Gossip, Videos) were dropped per editorial direction — those topics now live
-# on dedicated cross-sport surfaces (News Feed, Gossip page, etc.) instead of
-# being duplicated under every sport. Only the Transfers section, which is
-# genuinely sport-specific, stays.
+# Default sections every new sport gets. The list is deliberately narrow:
+# Scores / Fixtures / Standings / Teams / Gossip / Videos were dropped per
+# editorial direction — those topics live on dedicated cross-sport surfaces
+# instead of being duplicated under every sport. News stays because it powers
+# the sport-scoped story feed visitors click into from the Sports menu, and
+# Transfers stays because it's genuinely sport-specific.
 DEFAULT_SECTIONS = [
+    ("news",      "News",      "news",      "general",       "📰", "Latest headlines",   10),
     ("transfers", "Transfers", "transfers", "international", "🔁", "Signings & rumours", 50),
 ]
 

@@ -515,20 +515,6 @@ export default function Navbar({ navigate, route }) {
                 )}
               </div>
 
-              {/* News Feed — aggregated cross-sport feed */}
-              <button
-                type="button"
-                onClick={() => handleTopLevelRoute('news')}
-                className={`relative h-full px-4 lg:px-5 font-display text-[13px] font-medium uppercase tracking-[0.1em] transition-colors ${
-                  route?.type === 'news' ? 'text-gold' : 'text-gray-300 hover:text-white'
-                }`}
-              >
-                News Feed
-                {route?.type === 'news' && (
-                  <span className="absolute bottom-0 left-2 right-2 h-[2px] bg-gold rounded-full" />
-                )}
-              </button>
-
               {/* Gossip — dedicated page */}
               <button
                 type="button"
@@ -780,15 +766,6 @@ export default function Navbar({ navigate, route }) {
               );
             })}
 
-            <button
-              type="button"
-              onClick={() => handleTopLevelRoute('news')}
-              className={`block w-full text-left px-4 py-3 font-display text-sm uppercase tracking-wider rounded-lg transition-colors ${
-                route?.type === 'news' ? 'text-gold bg-gold/5' : 'text-gray-300 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              News Feed
-            </button>
             <button
               type="button"
               onClick={() => handleTopLevelRoute('gossip')}

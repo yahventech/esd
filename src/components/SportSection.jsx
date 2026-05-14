@@ -31,7 +31,7 @@ function StoryTile({ story, onOpen }) {
       <div className={`relative bg-gradient-to-br ${story.gradient || 'from-navy-200 via-navy-100 to-charcoal'}`}>
         {story.coverImage ? (
           <img src={story.coverImage} alt="" loading="lazy"
-            className="block w-full max-h-[15rem] object-contain aspect-video" />
+            className="block w-full h-auto max-h-[18rem] object-contain" />
         ) : (
           <div className="w-full h-40" />
         )}
