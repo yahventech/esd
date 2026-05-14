@@ -50,11 +50,11 @@ function StoryCard({ story, size = 'normal', onOpen }) {
           <img
             src={story.coverImage}
             alt=""
-            // Render at the image's natural aspect — width 100%, height
-            // proportional. No forced 16:9 box, so wide news photos fill the
-            // card horizontally with no left/right letterbox gaps. The max-h
-            // is a safety cap for extreme portraits.
-            className={`block w-full h-auto ${isLarge ? 'max-h-[26rem]' : 'max-h-[18rem]'} object-contain`}
+            // Pure natural aspect — width fills the card, height is whatever
+            // the image's own ratio dictates. No height cap and no object-fit
+            // means there is never a letterbox or pillarbox gap to read as a
+            // crop, regardless of the editor's source aspect ratio.
+            className="block w-full h-auto"
             loading="lazy"
           />
         ) : (
@@ -99,7 +99,7 @@ function StoryCard({ story, size = 'normal', onOpen }) {
           <div className="mt-2 flex flex-wrap gap-1">
             {tags.slice(0, isLarge ? 4 : 2).map((t) => (
               <a key={t.slug || t.name}
-                href={`#/tag/${encodeURIComponent((t.slug || t.name).toString().toLowerCase())}`}
+                href={`/tag/${encodeURIComponent((t.slug || t.name).toString().toLowerCase())}`}
                 onClick={(e) => e.stopPropagation()}
                 className="text-[10px] font-body text-gold/80 bg-gold/[0.06] border border-gold/15 hover:border-gold/40 hover:text-gold rounded-full px-2 py-0.5 transition-colors">
                 #{t.name}

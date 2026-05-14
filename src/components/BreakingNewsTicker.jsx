@@ -1,6 +1,6 @@
 // EASD Component — BreakingNewsTicker
 // ESPN "Bottom Line" inspired scrolling news ticker, fed by the DRF backend.
-// On a sport-category route (#/<sport>/...) it switches to the category-scoped
+// On a sport-category route (/<sport>/...) it switches to the category-scoped
 // breaking feed so the ticker only surfaces alerts for the sport in view.
 
 import { useEffect, useState } from 'react';

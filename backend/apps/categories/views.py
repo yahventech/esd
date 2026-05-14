@@ -63,13 +63,15 @@ class CategoryViewSet(viewsets.ModelViewSet):
                 return Response({"detail": "Section not found."}, status=404)
             virtual = True
             default_names = {
-                "news": "News Feed", "scores": "Scores", "transfers": "Transfers",
-                "fixtures": "Fixtures", "standings": "Standings", "teams": "Teams",
-                "players": "Gossip", "videos": "Videos", "custom": "More",
+                "news": "News Feed", "scores": "Scores", "results": "Results",
+                "transfers": "Transfers", "fixtures": "Fixtures", "standings": "Standings",
+                "teams": "Teams", "players": "Gossip", "videos": "Videos",
+                "custom": "More",
             }
             default_intro = {
                 "news": f"The latest {category.name.lower()} stories, updated in real time.",
                 "scores": f"Live {category.name.lower()} scores across East Africa and beyond.",
+                "results": f"Full-time {category.name.lower()} results, sorted by most recent.",
                 "transfers": f"Every {category.name.lower()} signing, rumour and done-deal.",
                 "fixtures": f"Upcoming {category.name.lower()} matches and kick-off times.",
                 "standings": f"{category.name} league tables, computed from results.",

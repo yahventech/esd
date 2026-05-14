@@ -145,14 +145,16 @@ export default function StoryReader({ story, onClose }) {
             {story.headline}
           </h1>
 
-          {/* Article image — sits right under the headline so the lead photo
-              anchors the piece without ever being cropped by a fixed-aspect frame. */}
+          {/* Article image — sits right under the headline. Renders at the
+              image's natural aspect (no height cap, no object-fit), so editors
+              never see a horizontal letterbox or a forced crop, regardless of
+              source aspect ratio. */}
           {(detail?.articleImage || story.articleImage || story.coverImage) && (
-            <figure className="mb-5 -mx-6 sm:mx-0 sm:rounded-xl overflow-hidden bg-navy-100/40 border-y sm:border border-white/[0.06]">
+            <figure className="mb-5 -mx-6 sm:mx-0 sm:rounded-xl overflow-hidden">
               <img
                 src={detail?.articleImage || story.articleImage || story.coverImage}
                 alt={story.headline}
-                className="block w-full h-auto max-h-[60vh] object-contain bg-navy"
+                className="block w-full h-auto"
                 loading="lazy"
               />
             </figure>
@@ -190,7 +192,7 @@ export default function StoryReader({ story, onClose }) {
             <div className="mb-6 flex flex-wrap gap-1.5">
               {tags.map((t) => (
                 <a key={t.slug || t.name}
-                  href={`#/tag/${encodeURIComponent((t.slug || t.name).toString().toLowerCase())}`}
+                  href={`/tag/${encodeURIComponent((t.slug || t.name).toString().toLowerCase())}`}
                   onClick={() => onClose?.()}
                   className="text-[11px] font-body text-gold/90 bg-gold/[0.08] border border-gold/20 hover:border-gold/50 hover:text-gold rounded-full px-2.5 py-0.5 transition-colors">
                   #{t.name}

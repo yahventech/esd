@@ -27,16 +27,11 @@ SPORTS = [
 ]
 
 
-# Default sections every new sport gets. The list is deliberately narrow:
-# Scores / Fixtures / Standings / Teams / Gossip / Videos were dropped per
-# editorial direction — those topics live on dedicated cross-sport surfaces
-# instead of being duplicated under every sport. News stays because it powers
-# the sport-scoped story feed visitors click into from the Sports menu, and
-# Transfers stays because it's genuinely sport-specific.
-DEFAULT_SECTIONS = [
-    ("news",      "News Feed", "news",      "general",       "📰", "Latest headlines",   10),
-    ("transfers", "Transfers", "transfers", "international", "🔁", "Signings & rumours", 50),
-]
+# No default sub-sections are seeded per editorial direction: every section
+# that appears under a sport in the navigation must be added by an editor in
+# the admin dashboard. The `--sections` flag on this command remains so a
+# future editorial team can re-introduce defaults by populating this list.
+DEFAULT_SECTIONS = []
 
 
 class Command(BaseCommand):

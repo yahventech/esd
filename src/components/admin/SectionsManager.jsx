@@ -17,7 +17,8 @@ const SCOPE_BADGE = {
 
 const KINDS = [
   { value: 'news',      label: 'News feed' },
-  { value: 'scores',    label: 'Scores' },
+  { value: 'scores',    label: 'Scores (live + results toggle)' },
+  { value: 'results',   label: 'Results' },
   { value: 'transfers', label: 'Transfers' },
   { value: 'fixtures',  label: 'Fixtures' },
   { value: 'standings', label: 'Standings' },

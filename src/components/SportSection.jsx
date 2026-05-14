@@ -31,7 +31,7 @@ function StoryTile({ story, onOpen }) {
       <div className={`relative bg-gradient-to-br ${story.gradient || 'from-navy-200 via-navy-100 to-charcoal'}`}>
         {story.coverImage ? (
           <img src={story.coverImage} alt="" loading="lazy"
-            className="block w-full h-auto max-h-[18rem] object-contain" />
+            className="block w-full h-auto" />
         ) : (
           <div className="w-full h-40" />
         )}
@@ -56,7 +56,7 @@ function StoryTile({ story, onOpen }) {
           <div className="mt-auto pt-3 flex flex-wrap gap-1">
             {tags.slice(0, 3).map((t) => (
               <a key={t.slug || t.name}
-                href={`#/tag/${encodeURIComponent((t.slug || t.name).toString().toLowerCase())}`}
+                href={`/tag/${encodeURIComponent((t.slug || t.name).toString().toLowerCase())}`}
                 onClick={(e) => e.stopPropagation()}
                 className="text-[10px] font-body text-gold/80 bg-gold/[0.06] border border-gold/15 hover:border-gold/40 hover:text-gold rounded-full px-2 py-0.5 transition-colors">
                 #{t.name}
@@ -68,6 +68,44 @@ function StoryTile({ story, onOpen }) {
     </button>
   );
 }
+
+function ScoresWithToggle({ categorySlug, onOpen }) {
+  // The Scores subpage shows live matches by default but lets the user flip to
+  // finished games (results) without leaving the page. Keeping both behind one
+  // toggle prevents the menu from drifting toward a third subpage.
+  const [mode, setMode] = useState('live');
+  const tabBase = 'px-3 py-1.5 rounded-full text-[11px] font-display uppercase tracking-wider border transition-all inline-flex items-center gap-1.5';
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2 flex-wrap">
+        <button
+          type="button"
+          onClick={() => setMode('live')}
+          className={`${tabBase} ${mode === 'live'
+            ? 'bg-red-500/10 text-red-300 border-red-500/40'
+            : 'text-gray-400 border-white/[0.06] hover:text-white hover:border-white/20'}`}
+        >
+          <span className="relative flex h-1.5 w-1.5">
+            <span className={`${mode === 'live' ? 'animate-pulse-live' : ''} absolute h-full w-full rounded-full bg-red-500`} />
+            <span className="relative rounded-full h-1.5 w-1.5 bg-red-500" />
+          </span>
+          Live
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode('results')}
+          className={`${tabBase} ${mode === 'results'
+            ? 'bg-gold/10 text-gold border-gold/40'
+            : 'text-gray-400 border-white/[0.06] hover:text-white hover:border-white/20'}`}
+        >
+          Results
+        </button>
+      </div>
+      <MatchesPanel categorySlug={categorySlug} filter={mode} onOpen={onOpen} />
+    </div>
+  );
+}
+
 
 function MatchesPanel({ categorySlug, filter, onOpen }) {
   const { matches } = useAppData();
@@ -662,7 +700,9 @@ export default function SportSection({ categorySlug, sectionSlug, navigate }) {
     if (!section) return null;
     switch (section.kind) {
       case 'scores':
-        return <MatchesPanel categorySlug={categorySlug} filter="live" onOpen={setOpenMatch} />;
+        return <ScoresWithToggle categorySlug={categorySlug} onOpen={setOpenMatch} />;
+      case 'results':
+        return <MatchesPanel categorySlug={categorySlug} filter="results" onOpen={setOpenMatch} />;
       case 'fixtures':
         return <MatchesPanel categorySlug={categorySlug} filter="fixtures" onOpen={setOpenMatch} />;
       case 'standings':

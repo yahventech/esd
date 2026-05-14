@@ -25,32 +25,6 @@ const SCOPE_GROUPS = [
   { scope: 'general',       title: 'General',       hint: 'Cross-cutting coverage for the whole sport.' },
 ];
 
-// Baked-in defaults so every sport shows a full mega-menu even before an editor
-// adds anything in the admin dashboard. Backend `section_detail` synthesises the
-// same set on demand so the URLs resolve. Scope=general means they sit in the
-// third column until an editor splits them into local/international.
-const DEFAULT_SECTIONS = [
-  { slug: 'scores',    name: 'Scores',     kind: 'scores',    scope: 'general', icon: '📊', intro: 'Live match center' },
-  { slug: 'fixtures',  name: 'Fixtures',   kind: 'fixtures',  scope: 'general', icon: '📅', intro: "What's coming up" },
-  { slug: 'standings', name: 'Standings',  kind: 'standings', scope: 'general', icon: '🏆', intro: 'League tables' },
-  { slug: 'news',      name: 'News',       kind: 'news',      scope: 'general', icon: '📰', intro: 'Latest headlines' },
-  { slug: 'transfers', name: 'Transfers',  kind: 'transfers', scope: 'general', icon: '🔁', intro: 'Signings & rumours' },
-  { slug: 'teams',     name: 'Teams',      kind: 'teams',     scope: 'general', icon: '🛡️', intro: 'Every club & athlete' },
-  { slug: 'players',   name: 'Gossip',     kind: 'players',   scope: 'general', icon: '🗣',  intro: "Who's making noise" },
-  { slug: 'videos',    name: 'Videos',     kind: 'videos',    scope: 'general', icon: '▶️', intro: 'Highlights & analysis' },
-];
-
-// Merge admin-defined sections onto the defaults; admin wins on slug clashes.
-function mergeSections(adminSections) {
-  const admin = Array.isArray(adminSections) ? adminSections : [];
-  const bySlug = new Map(admin.map((s) => [s.slug, s]));
-  const merged = DEFAULT_SECTIONS.map((d) => bySlug.get(d.slug) || d);
-  for (const a of admin) {
-    if (!DEFAULT_SECTIONS.some((d) => d.slug === a.slug)) merged.push(a);
-  }
-  return merged;
-}
-
 // Bucket sections by their scope. Columns with zero items drop out so a
 // section-light sport doesn't render a wall of empty headers.
 function groupByScope(sections) {
@@ -300,8 +274,11 @@ export default function Navbar({ navigate, route }) {
                           </p>
                         ) : (() => {
                           const cat = navCategories.find((c) => c.slug === activeSport) || navCategories[0];
-                          const mergedSections = mergeSections(cat.sections);
-                          const groups = groupByScope(mergedSections);
+                          // Show only sections the editor has added in the admin dashboard
+                          // — no baked-in defaults — so the mega-menu reflects exactly
+                          // what's been published, nothing more.
+                          const adminSections = Array.isArray(cat.sections) ? cat.sections : [];
+                          const groups = groupByScope(adminSections);
                           const catStories = storiesByCategory[cat.slug]
                             || storiesByCategory[(cat.name || '').toLowerCase()]
                             || [];

@@ -51,6 +51,7 @@ class CategorySection(models.Model):
 
     KIND_NEWS = "news"
     KIND_SCORES = "scores"
+    KIND_RESULTS = "results"
     KIND_TRANSFERS = "transfers"
     KIND_FIXTURES = "fixtures"
     KIND_STANDINGS = "standings"
@@ -61,6 +62,7 @@ class CategorySection(models.Model):
     KIND_CHOICES = (
         (KIND_NEWS, "News"),
         (KIND_SCORES, "Scores"),
+        (KIND_RESULTS, "Results"),
         (KIND_TRANSFERS, "Transfers"),
         (KIND_FIXTURES, "Fixtures"),
         (KIND_STANDINGS, "Standings"),

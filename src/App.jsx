@@ -14,7 +14,6 @@ import VideoHighlights from './components/VideoHighlights';
 import Newsletter from './components/Newsletter';
 import Footer from './components/Footer';
 import AuthModal from './components/AuthModal';
-import BackendStatus from './components/BackendStatus';
 import SportSection from './components/SportSection';
 import StoryListPage from './components/StoryListPage';
 import TrendingStrip from './components/TrendingStrip';
@@ -106,7 +105,6 @@ export default function App() {
           <AdminDashboard />
         </Suspense>
       )}
-      <BackendStatus />
     </div>
   );
 }

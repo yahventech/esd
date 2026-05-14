@@ -73,7 +73,7 @@ export default function TrendingStrip() {
             return (
               <a
                 key={t.id || t.tag}
-                href={`#/tag/${encodeURIComponent(slug)}`}
+                href={`/tag/${encodeURIComponent(slug)}`}
                 className="group relative overflow-hidden rounded-xl border border-white/[0.06] bg-navy-100/40 hover:border-gold/40 hover:bg-navy-100/60 transition-all p-4 flex flex-col"
               >
                 <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-gold/[0.04] blur-2xl group-hover:bg-gold/[0.08] transition-colors" />

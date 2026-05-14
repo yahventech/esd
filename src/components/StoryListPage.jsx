@@ -176,7 +176,7 @@ export default function StoryListPage({
                   >
                     {s.coverImage ? (
                       <img src={s.coverImage} alt="" loading="lazy"
-                        className="block w-full h-auto max-h-[18rem] object-contain" />
+                        className="block w-full h-auto" />
                     ) : (
                       <div className="w-full h-40" />
                     )}
@@ -207,7 +207,7 @@ export default function StoryListPage({
                       <div className="mt-2 flex flex-wrap gap-1">
                         {tags.slice(0, 3).map((t) => (
                           <a key={t.slug || t.name}
-                            href={`#/tag/${encodeURIComponent((t.slug || t.name).toString().toLowerCase())}`}
+                            href={`/tag/${encodeURIComponent((t.slug || t.name).toString().toLowerCase())}`}
                             onClick={(e) => e.stopPropagation()}
                             className="text-[10px] font-body text-gold/80 bg-gold/[0.06] border border-gold/15 hover:border-gold/40 hover:text-gold rounded-full px-2 py-0.5 transition-colors">
                             #{t.name}

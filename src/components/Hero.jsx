@@ -20,11 +20,11 @@ function splitHeadline(headline) {
 
 function tagHref(t) {
   const slug = (t.slug || t.tag || t.name || '').toString().toLowerCase().replace(/^#+/, '');
-  return `#/tag/${encodeURIComponent(slug)}`;
+  return `/tag/${encodeURIComponent(slug)}`;
 }
 
 export default function Hero() {
-  const { hero, featured, trending, matches, loading } = useAppData();
+  const { hero, featured, trending, loading } = useAppData();
   const [openStory, setOpenStory] = useState(null);
   const [slideIdx, setSlideIdx] = useState(0);
 
@@ -65,9 +65,6 @@ export default function Hero() {
   const fmt = getFormatBadge(current.format);
   const heroTags = Array.isArray(current.tags) ? current.tags : [];
   const [line1, line2, line3] = splitHeadline(current.headline);
-  const featuredMatch = matches.find((m) => m.is_featured && m.status === 'LIVE')
-                     || matches.find((m) => m.status === 'LIVE')
-                     || matches[0];
   const prev = () => setSlideIdx((i) => (i - 1 + slides.length) % slides.length);
   const next = () => setSlideIdx((i) => (i + 1) % slides.length);
 
@@ -207,57 +204,10 @@ export default function Hero() {
             </div>
           </div>
 
-          {/* Right column — Live match card + trending */}
+          {/* Right column — trending widget only. The persistent match card
+              that used to sit here was removed at editorial direction; live
+              scores and results live in their dedicated strips below the hero. */}
           <div className="lg:col-span-4 space-y-4">
-            {featuredMatch && (
-              <div
-                className="relative rounded-xl overflow-hidden animate-fade-in bg-navy-100/80 backdrop-blur-sm border border-white/[0.06]"
-                style={{ animationDelay: '0.3s', animationFillMode: 'both' }}
-              >
-                <div className="h-[2px] bg-gradient-to-r from-gold via-emerald to-gold" />
-                <div className="p-5">
-                  <div className="flex items-center justify-between mb-5">
-                    <span className="font-display text-[10px] font-medium uppercase tracking-[0.15em] text-gray-500 truncate">
-                      {featuredMatch.competition}
-                    </span>
-                    {featuredMatch.status === 'LIVE' ? (
-                      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-red-600/15 border border-red-500/30">
-                        <span className="relative flex h-1.5 w-1.5">
-                          <span className="animate-pulse-live absolute h-full w-full rounded-full bg-red-500" />
-                          <span className="relative rounded-full h-1.5 w-1.5 bg-red-500" />
-                        </span>
-                        <span className="font-display text-[10px] font-bold text-red-400 tracking-wider">{featuredMatch.minute}</span>
-                      </div>
-                    ) : (
-                      <span className="font-display text-[10px] font-bold text-gray-400 uppercase">{featuredMatch.status}</span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div className="text-center space-y-1 flex-1">
-                      <div className="text-3xl">{featuredMatch.home.flag}</div>
-                      <div className="font-display text-sm font-semibold text-white">{featuredMatch.home.name}</div>
-                    </div>
-                    <div className="px-5 text-center">
-                      <div className="font-display text-4xl sm:text-5xl font-bold bg-gradient-to-b from-gold to-yellow-500 bg-clip-text text-transparent leading-none">
-                        {featuredMatch.home.score ?? '-'} – {featuredMatch.away.score ?? '-'}
-                      </div>
-                    </div>
-                    <div className="text-center space-y-1 flex-1">
-                      <div className="text-3xl">{featuredMatch.away.flag}</div>
-                      <div className="font-display text-sm font-semibold text-white">{featuredMatch.away.name}</div>
-                    </div>
-                  </div>
-
-                  {featuredMatch.events?.length > 0 && (
-                    <div className="mt-4 pt-3 border-t border-white/[0.06] text-[11px] text-gray-500 font-body space-y-1">
-                      <div>{featuredMatch.events.slice(0, 3).join(' · ')}</div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
             <div
               className="hidden lg:block rounded-xl bg-navy-100/60 backdrop-blur-sm border border-white/[0.06] p-4 animate-fade-in"
               style={{ animationDelay: '0.5s', animationFillMode: 'both' }}
@@ -275,7 +225,7 @@ export default function Hero() {
                   return (
                     <a
                       key={t.tag}
-                      href={`#/tag/${encodeURIComponent(tagSlug)}`}
+                      href={`/tag/${encodeURIComponent(tagSlug)}`}
                       className="w-full flex items-center justify-between group text-left"
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
