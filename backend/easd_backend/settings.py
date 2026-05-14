@@ -183,17 +183,52 @@ if not AWS_S3_CUSTOM_DOMAIN and AWS_S3_ENDPOINT_URL and AWS_STORAGE_BUCKET_NAME:
     AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.{host}"
 AWS_LOCATION = env("AWS_LOCATION", default="media")
 
+R2_STORAGE_ENABLED = all([
+    AWS_ACCESS_KEY_ID,
+    AWS_SECRET_ACCESS_KEY,
+    AWS_STORAGE_BUCKET_NAME,
+    AWS_S3_ENDPOINT_URL,
+])
+
 DEFAULT_FILE_STORAGE = env("DJANGO_DEFAULT_FILE_STORAGE", default="")
 if not DEFAULT_FILE_STORAGE:
-    if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and AWS_STORAGE_BUCKET_NAME and AWS_S3_ENDPOINT_URL:
+    if R2_STORAGE_ENABLED:
         DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
-        logger.info(f"R2 storage configured: bucket={AWS_STORAGE_BUCKET_NAME}, endpoint={AWS_S3_ENDPOINT_URL}")
     else:
         DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
-        logger.info("R2 credentials not provided, using local file storage")
+
+STORAGES = {
+    "default": {
+        "BACKEND": DEFAULT_FILE_STORAGE,
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+
+if DEFAULT_FILE_STORAGE == "storages.backends.s3boto3.S3Boto3Storage":
+    if R2_STORAGE_ENABLED:
+        logger.info(
+            "R2 storage configured: bucket=%s, endpoint=%s, location=%s, custom_domain=%s",
+            AWS_STORAGE_BUCKET_NAME,
+            AWS_S3_ENDPOINT_URL,
+            AWS_LOCATION,
+            AWS_S3_CUSTOM_DOMAIN or "<none>",
+        )
+    else:
+        logger.warning(
+            "S3/R2 storage selected but config is incomplete: access_key=%s, secret_key=%s, bucket=%s, endpoint=%s",
+            bool(AWS_ACCESS_KEY_ID),
+            bool(AWS_SECRET_ACCESS_KEY),
+            bool(AWS_STORAGE_BUCKET_NAME),
+            bool(AWS_S3_ENDPOINT_URL),
+        )
+else:
+    logger.info("Using file storage backend: %s", DEFAULT_FILE_STORAGE)
 AWS_DEFAULT_ACL = None
 AWS_QUERYSTRING_AUTH = False
 AWS_S3_ADDRESSING_STYLE = env("AWS_S3_ADDRESSING_STYLE", default="virtual")
+AWS_S3_SIGNATURE_VERSION = env("AWS_S3_SIGNATURE_VERSION", default="s3v4")
 AWS_S3_OBJECT_PARAMETERS = {"CacheControl": "max-age=86400"}
 
 MEDIA_URL = env(

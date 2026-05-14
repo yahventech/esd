@@ -6,6 +6,7 @@ const API_BASE =
 const R2_MEDIA_BASE =
   import.meta.env.VITE_R2_MEDIA_BASE?.replace(/\/$/, '') ||
   'https://pub-acac0a4d8fc64b5c9268945d8a688244.r2.dev/media';
+const UPLOAD_LOG_PREFIX = '[EASD upload]';
 
 const TOKEN_KEY = 'easd.access';
 const REFRESH_KEY = 'easd.refresh';
@@ -30,6 +31,55 @@ export const tokens = {
   },
 };
 
+function isBlobLike(value) {
+  return typeof Blob !== 'undefined' && value instanceof Blob;
+}
+
+function describeFormValue(value) {
+  const text = String(value);
+  if (text.length <= 160) return text;
+  return `${text.slice(0, 160)}... (${text.length} chars)`;
+}
+
+function describeFormData(formData) {
+  return Array.from(formData.entries()).map(([field, value]) => {
+    if (isBlobLike(value)) {
+      return {
+        field,
+        fileName: value.name || 'blob',
+        type: value.type || 'application/octet-stream',
+        size: value.size,
+      };
+    }
+    return { field, value: describeFormValue(value) };
+  });
+}
+
+function joinMediaBase(value) {
+  const mediaPath = String(value).trim().replace(/^\/?media\/?/i, '');
+  return `${R2_MEDIA_BASE}/${mediaPath}`;
+}
+
+function collectMediaUrls(value, path = '', urls = []) {
+  if (urls.length >= 12 || value == null) return urls;
+  if (typeof value === 'string') {
+    if (/\/media\/|r2\.dev|cloudflarestorage\.com/i.test(value)) {
+      urls.push({ field: path || 'value', url: value });
+    }
+    return urls;
+  }
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => collectMediaUrls(item, `${path}[${index}]`, urls));
+    return urls;
+  }
+  if (typeof value === 'object') {
+    Object.entries(value).forEach(([key, item]) => {
+      collectMediaUrls(item, path ? `${path}.${key}` : key, urls);
+    });
+  }
+  return urls;
+}
+
 async function refreshAccess() {
   const refresh = tokens.refresh;
   if (!refresh) return false;
@@ -48,15 +98,33 @@ async function refreshAccess() {
 async function request(path, { method = 'GET', body, auth = false, retry = true } = {}) {
   const url = path.startsWith('http') ? path : `${API_BASE}${path}`;
   const headers = { Accept: 'application/json' };
-  const isForm = body instanceof FormData;
+  const isForm = typeof FormData !== 'undefined' && body instanceof FormData;
+  const logUpload = isForm && typeof console !== 'undefined';
   if (body != null && !isForm) headers['Content-Type'] = 'application/json';
   if (auth && tokens.access) headers.Authorization = `Bearer ${tokens.access}`;
 
-  const res = await fetch(url, {
-    method,
-    headers,
-    body: body == null ? undefined : isForm ? body : JSON.stringify(body),
-  });
+  if (logUpload) {
+    console.info(`${UPLOAD_LOG_PREFIX} request`, {
+      method,
+      url,
+      fields: describeFormData(body),
+    });
+  }
+
+  const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
+  let res;
+  try {
+    res = await fetch(url, {
+      method,
+      headers,
+      body: body == null ? undefined : isForm ? body : JSON.stringify(body),
+    });
+  } catch (error) {
+    if (logUpload) {
+      console.error(`${UPLOAD_LOG_PREFIX} network error`, { method, url, error });
+    }
+    throw error;
+  }
 
   if (res.status === 401 && auth && retry) {
     const refreshed = await refreshAccess();
@@ -72,10 +140,10 @@ async function request(path, { method = 'GET', body, auth = false, retry = true 
     if (typeof value === 'string') {
       const trimmed = value.trim();
       if (trimmed.startsWith('/media/')) {
-        return `${R2_MEDIA_BASE}${trimmed}`;
+        return joinMediaBase(trimmed);
       }
       if (/^https?:\/\/(?:esd-biau\.onrender\.com|localhost|127\.0\.0\.1)(?::\d+)?\/media\//i.test(trimmed)) {
-        return trimmed.replace(/^(https?:\/\/(?:esd-biau\.onrender\.com|localhost|127\.0\.0\.1)(?::\d+)?)(\/media\/.*)$/i, `${R2_MEDIA_BASE}$2`);
+        return joinMediaBase(trimmed.replace(/^https?:\/\/(?:esd-biau\.onrender\.com|localhost|127\.0\.0\.1)(?::\d+)?\/media\//i, ''));
       }
       return trimmed;
     }
@@ -89,6 +157,15 @@ async function request(path, { method = 'GET', body, auth = false, retry = true 
   };
 
   if (!res.ok) {
+    if (logUpload) {
+      console.error(`${UPLOAD_LOG_PREFIX} failed`, {
+        method,
+        url,
+        status: res.status,
+        statusText: res.statusText,
+        response: data,
+      });
+    }
     const err = new Error(
       (data && (data.detail || data.message)) || `${res.status} ${res.statusText}`
     );
@@ -96,7 +173,18 @@ async function request(path, { method = 'GET', body, auth = false, retry = true 
     err.data = data;
     throw err;
   }
-  return normalizeMediaUrl(data);
+  const normalized = normalizeMediaUrl(data);
+  if (logUpload) {
+    const endedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    console.info(`${UPLOAD_LOG_PREFIX} success`, {
+      method,
+      url,
+      status: res.status,
+      durationMs: Math.round(endedAt - startedAt),
+      mediaUrls: collectMediaUrls(normalized),
+    });
+  }
+  return normalized;
 }
 
 // --- High-level API surface ---
