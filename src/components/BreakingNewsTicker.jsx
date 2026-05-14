@@ -8,17 +8,16 @@ import { Zap } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 import { api } from '../lib/api';
 import { scrollToSection } from '../utils/helpers';
-import { useRoute } from '../hooks/useRoute';
 
-export default function BreakingNewsTicker() {
+export default function BreakingNewsTicker({ route }) {
   const { breakingNews } = useAppData();
-  const [route] = useRoute();
   const [scoped, setScoped] = useState(null);
 
   // Pick the active sport slug from the route — only sport pages need scoping.
   // Tag / gossip / opinion routes keep the global ticker because they are
-  // intentionally cross-sport surfaces.
-  const sportSlug = (route.type === 'category' || route.type === 'section') ? route.categorySlug : null;
+  // intentionally cross-sport surfaces. The route is passed down from App so
+  // we don't install a second copy of useRoute's click interceptor here.
+  const sportSlug = (route?.type === 'category' || route?.type === 'section') ? route.categorySlug : null;
 
   useEffect(() => {
     if (!sportSlug) { setScoped(null); return; }

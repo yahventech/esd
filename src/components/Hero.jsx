@@ -221,11 +221,20 @@ export default function Hero() {
               <div className="space-y-2">
                 {trending.map((t, i) => {
                   const label = (t.tag || '').replace(/^#+/, '');
-                  const tagSlug = label.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                  // Prefer the server's canonical slug; fall back to a local
+                  // slugify only when the server hasn't provided one yet.
+                  const slug = (t.slug && t.slug.length)
+                    ? t.slug
+                    : label.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                  // Skip topics that collapse to an empty slug after
+                  // normalisation — otherwise the link points at `/tag/` and
+                  // silently falls back to the home view (the original "click
+                  // goes to hero" symptom).
+                  if (!slug) return null;
                   return (
                     <a
                       key={t.tag}
-                      href={`/tag/${encodeURIComponent(tagSlug)}`}
+                      href={`/tag/${encodeURIComponent(slug)}`}
                       className="w-full flex items-center justify-between group text-left"
                     >
                       <div className="flex items-center gap-2.5 min-w-0">

@@ -33,7 +33,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-navy">
       <Navbar route={route} navigate={navigate} />
-      <BreakingNewsTicker />
+      <BreakingNewsTicker route={route} />
       {route.type === 'section' || route.type === 'category' ? (
         <SportSection
           categorySlug={route.categorySlug}
