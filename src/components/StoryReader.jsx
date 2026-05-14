@@ -128,11 +128,8 @@ export default function StoryReader({ story, onClose }) {
         {/* Scrollable content area — the panel itself stays fixed-height so the
             scroll is smooth and self-contained instead of dragging the whole overlay. */}
         <div className="overflow-y-auto overscroll-contain flex-1 rounded-none sm:rounded-2xl">
-        <div className={`relative h-48 sm:h-64 rounded-t-none sm:rounded-t-2xl overflow-hidden bg-gradient-to-br ${
-          story.gradient || 'from-navy-200 via-navy-100 to-charcoal'
-        }`}>
-          <div className="absolute inset-0 bg-gradient-to-t from-navy via-navy/40 to-transparent" />
-          <div className="absolute top-4 left-4 flex items-center gap-2">
+        <div className="p-6 sm:p-8 pt-12 sm:pt-10">
+          <div className="flex items-center gap-2 mb-3 flex-wrap">
             <span className={`${badge.bg} px-2.5 py-0.5 font-display text-[11px] font-semibold uppercase tracking-[0.15em] text-white rounded`}>
               {story.category}
             </span>
@@ -143,12 +140,23 @@ export default function StoryReader({ story, onClose }) {
               </span>
             )}
           </div>
-        </div>
 
-        <div className="p-6 sm:p-8">
-          <h1 className="font-display text-2xl sm:text-3xl font-bold leading-tight text-white mb-3">
+          <h1 className="font-display text-2xl sm:text-3xl font-bold leading-tight text-white mb-4">
             {story.headline}
           </h1>
+
+          {/* Article image — sits right under the headline so the lead photo
+              anchors the piece without ever being cropped by a fixed-aspect frame. */}
+          {(detail?.articleImage || story.articleImage || story.coverImage) && (
+            <figure className="mb-5 -mx-6 sm:mx-0 sm:rounded-xl overflow-hidden bg-navy-100/40 border-y sm:border border-white/[0.06]">
+              <img
+                src={detail?.articleImage || story.articleImage || story.coverImage}
+                alt={story.headline}
+                className="block w-full h-auto max-h-[60vh] object-contain bg-navy"
+                loading="lazy"
+              />
+            </figure>
+          )}
 
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] text-gray-500 font-body mb-5">
             {story.author && <span>By <strong className="text-gray-300">{story.author}</strong></span>}

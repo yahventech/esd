@@ -27,18 +27,14 @@ SPORTS = [
 ]
 
 
-# Default sections every new sport gets, with sensible scope splits. The
-# section_detail virtual fallback already covers these slugs, so URLs work
-# even before stories are written.
+# Default sections every new sport gets. We deliberately keep the list narrow:
+# the general-scoped defaults (Scores, Fixtures, Standings, News, Teams,
+# Gossip, Videos) were dropped per editorial direction — those topics now live
+# on dedicated cross-sport surfaces (News Feed, Gossip page, etc.) instead of
+# being duplicated under every sport. Only the Transfers section, which is
+# genuinely sport-specific, stays.
 DEFAULT_SECTIONS = [
-    ("scores",    "Scores",    "scores",    "general",       "📊", "Live match center",              10),
-    ("fixtures",  "Fixtures",  "fixtures",  "general",       "📅", "What's coming up",               20),
-    ("standings", "Standings", "standings", "general",       "🏆", "League tables",                  30),
-    ("news",      "News",      "news",      "general",       "📰", "Latest headlines",               40),
-    ("transfers", "Transfers", "transfers", "international", "🔁", "Signings & rumours",             50),
-    ("teams",     "Teams",     "teams",     "general",       "🛡",  "Every club, squad & profile",   60),
-    ("players",   "Gossip",    "players",   "general",       "🗣",  "Who's making noise",            70),
-    ("videos",    "Videos",    "videos",    "general",       "▶",  "Highlights & analysis",          80),
+    ("transfers", "Transfers", "transfers", "international", "🔁", "Signings & rumours", 50),
 ]
 
 

@@ -220,6 +220,18 @@ export const api = {
       request(`/api/stories/${slug}/bookmark/`, { auth: true }),
   },
 
+  trending: {
+    likeStatus: (id) => request(`/api/stories/trending/${id}/like/`, { auth: true }),
+    likeToggle: (id) => request(`/api/stories/trending/${id}/like/`, { method: 'POST', auth: true }),
+    comments:   (id) => request(`/api/stories/trending/${id}/comments/`),
+    addComment: (id, body) =>
+      request(`/api/stories/trending/${id}/comments/`, {
+        method: 'POST', auth: true, body: { body },
+      }),
+    likeComment:   (id) => request(`/api/stories/trending-comments/${id}/like/`, { method: 'POST', auth: true }),
+    deleteComment: (id) => request(`/api/stories/trending-comments/${id}/`, { method: 'DELETE', auth: true }),
+  },
+
   categories: {
     list: () => request('/api/categories/'),
     detail: (slug) => request(`/api/categories/${slug}/`),

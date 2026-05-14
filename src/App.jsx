@@ -18,6 +18,7 @@ import BackendStatus from './components/BackendStatus';
 import SportSection from './components/SportSection';
 import StoryListPage from './components/StoryListPage';
 import TrendingStrip from './components/TrendingStrip';
+import NewsFeedPage from './components/NewsFeedPage';
 import { useAuth } from './context/AuthContext';
 import { isStaffRole } from './lib/api';
 import { useRoute } from './hooks/useRoute';
@@ -61,6 +62,8 @@ export default function App() {
           initialCategorySlug={route.sportSlug || null}
           emptyMessage="No opinion pieces published yet."
         />
+      ) : route.type === 'news' ? (
+        <NewsFeedPage navigate={navigate} />
       ) : route.type === 'tag' && route.tagSlug ? (
         <StoryListPage
           key={`tag-${route.tagSlug}`}

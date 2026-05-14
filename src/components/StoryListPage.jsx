@@ -9,6 +9,7 @@ import { api } from '../lib/api';
 import { getCategoryBadge, getFormatBadge } from '../utils/helpers';
 import { renderMarkdown } from '../utils/markdown';
 import StoryReader from './StoryReader';
+import TrendingInteractions from './TrendingInteractions';
 
 export default function StoryListPage({
   title,
@@ -108,6 +109,8 @@ export default function StoryListPage({
           </div>
         )}
 
+        {trending && <TrendingInteractions topic={trending} />}
+
         {/* Category filter chips */}
         {categories && categories.length > 0 && (
           <div
@@ -155,7 +158,7 @@ export default function StoryListPage({
             {emptyMessage || 'Nothing to show yet. Check back soon.'}
           </p>
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
             {items.map((s) => {
               const b = getCategoryBadge(s.category);
               const f = getFormatBadge(s.format);
@@ -169,13 +172,15 @@ export default function StoryListPage({
                   style={{ background: 'rgba(15,31,58,0.6)' }}
                 >
                   <div
-                    className={`relative h-40 bg-gradient-to-br ${s.gradient || 'from-navy-200 via-navy-100 to-charcoal'}`}
+                    className={`relative bg-gradient-to-br ${s.gradient || 'from-navy-200 via-navy-100 to-charcoal'}`}
                   >
-                    {s.coverImage && (
+                    {s.coverImage ? (
                       <img src={s.coverImage} alt="" loading="lazy"
-                        className="absolute inset-0 w-full h-full object-cover" />
+                        className="block w-full max-h-[15rem] object-contain aspect-video" />
+                    ) : (
+                      <div className="w-full h-40" />
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-navy via-navy/40 to-transparent" />
+                    <div className="absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-black/40 to-transparent pointer-events-none" />
                     <div className="absolute top-3 left-3 flex items-center gap-1.5">
                       <span className={`${b.bg} px-2 py-0.5 rounded font-display text-[10px] font-semibold uppercase tracking-[0.15em] text-white`}>
                         {s.category}
@@ -192,7 +197,7 @@ export default function StoryListPage({
                       {s.headline}
                     </div>
                     {s.summary && (
-                      <div className="mt-1.5 text-[12px] text-gray-400 font-body line-clamp-2">{s.summary}</div>
+                      <div className="mt-1.5 text-[12.5px] text-gray-400 font-body line-clamp-3">{s.summary}</div>
                     )}
                     <div className="mt-3 flex items-center gap-2 text-[11px] text-gray-500 font-body">
                       <span>{s.timestamp}</span>

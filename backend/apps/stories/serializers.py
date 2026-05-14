@@ -1,7 +1,8 @@
 from django.utils import timezone
 from rest_framework import serializers
 
-from .models import BreakingNews, Story, Tag, TrendingTopic
+from .models import (BreakingNews, Story, Tag, TrendingComment,
+                     TrendingCommentLike, TrendingLike, TrendingTopic)
 
 
 def humanize(dt):
@@ -54,6 +55,7 @@ class StoryListSerializer(serializers.ModelSerializer):
     isBreaking = serializers.BooleanField(source="is_breaking", read_only=True)
     type = serializers.CharField(source="editors_pick_type", default="", read_only=True)
     coverImage = serializers.SerializerMethodField()
+    articleImage = serializers.SerializerMethodField()
     format = serializers.CharField(source="story_format", read_only=True)
     formatLabel = serializers.SerializerMethodField()
     tags = TinyTagSerializer(many=True, read_only=True)
@@ -63,7 +65,7 @@ class StoryListSerializer(serializers.ModelSerializer):
         fields = (
             "id", "slug", "category", "categorySlug", "headline", "summary",
             "author", "authorRole", "timestamp", "readTime", "commentCount",
-            "isLive", "isBreaking", "gradient", "type", "coverImage",
+            "isLive", "isBreaking", "gradient", "type", "coverImage", "articleImage",
             "placement", "placement_rank", "status", "view_count",
             "format", "formatLabel", "tags",
         )
@@ -71,12 +73,21 @@ class StoryListSerializer(serializers.ModelSerializer):
     def get_formatLabel(self, obj):
         return dict(Story.FORMAT_CHOICES).get(obj.story_format, "")
 
-    def get_coverImage(self, obj):
-        if not obj.cover_image:
+    def _abs_image(self, image_field):
+        if not image_field:
             return None
         request = self.context.get("request")
-        url = obj.cover_image.url
+        url = image_field.url
         return request.build_absolute_uri(url) if request else url
+
+    def get_coverImage(self, obj):
+        return self._abs_image(obj.cover_image)
+
+    def get_articleImage(self, obj):
+        # Fall back to the cover image so existing stories still show a hero
+        # image inside the reader without an editor touching them. New stories
+        # can use this field to supply a distinct in-article photo.
+        return self._abs_image(obj.article_image) or self._abs_image(obj.cover_image)
 
     def get_timestamp(self, obj):
         return humanize(obj.published_at)
@@ -107,8 +118,8 @@ class StoryWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Story
         fields = (
-            "id", "slug", "headline", "summary", "body", "cover_image", "gradient",
-            "category", "placement", "placement_rank", "editors_pick_type",
+            "id", "slug", "headline", "summary", "body", "cover_image", "article_image",
+            "gradient", "category", "placement", "placement_rank", "editors_pick_type",
             "status", "is_live", "is_breaking", "read_minutes", "published_at",
             "story_format", "tags", "tag_names",
         )
@@ -159,15 +170,54 @@ class TrendingTopicSerializer(serializers.ModelSerializer):
     category_slug = serializers.CharField(source="category.slug", read_only=True, default="")
     category_name = serializers.CharField(source="category.name", read_only=True, default="")
     slug = serializers.SerializerMethodField()
+    liked_by_me = serializers.SerializerMethodField()
 
     class Meta:
         model = TrendingTopic
         fields = ("id", "tag", "slug", "count", "post_count", "order", "is_active", "body",
+                  "like_count", "comment_count", "liked_by_me",
                   "category", "category_slug", "category_name")
-        read_only_fields = ("category_slug", "category_name", "slug")
+        read_only_fields = ("category_slug", "category_name", "slug",
+                            "like_count", "comment_count", "liked_by_me")
 
     def get_slug(self, obj):
         # Mirrors the slugify the frontend uses to build #/tag/<slug> links so
         # the dedicated trending-tag page can be reached from a list of topics.
         from django.utils.text import slugify
         return slugify(obj.tag)
+
+    def get_liked_by_me(self, obj):
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return False
+        return TrendingLike.objects.filter(topic=obj, user=request.user).exists()
+
+
+class TrendingCommentSerializer(serializers.ModelSerializer):
+    user = serializers.SerializerMethodField()
+    timestamp = serializers.SerializerMethodField()
+    liked_by_me = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TrendingComment
+        fields = ("id", "topic", "body", "user", "timestamp",
+                  "like_count", "liked_by_me", "created_at")
+        read_only_fields = ("like_count", "topic", "created_at")
+
+    def get_user(self, obj):
+        u = obj.user
+        return {
+            "id": u.id,
+            "username": u.username,
+            "display_name": getattr(u, "display_name", None) or u.username,
+            "avatar_url": getattr(u, "avatar_url", None),
+        }
+
+    def get_timestamp(self, obj):
+        return humanize(obj.created_at)
+
+    def get_liked_by_me(self, obj):
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return False
+        return TrendingCommentLike.objects.filter(comment=obj, user=request.user).exists()

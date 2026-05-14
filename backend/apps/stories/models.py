@@ -68,6 +68,10 @@ class Story(models.Model):
     summary = models.TextField(blank=True)
     body = models.TextField(blank=True)
     cover_image = models.ImageField(upload_to="story_covers/", blank=True, null=True)
+    # In-article hero image, rendered between the headline and body inside the
+    # reader. Optional — falls back to cover_image at the serializer if blank,
+    # which keeps existing stories visually unchanged.
+    article_image = models.ImageField(upload_to="story_articles/", blank=True, null=True)
     gradient = models.CharField(max_length=160, blank=True,
                                  help_text="Tailwind gradient, e.g. 'from-amber-900/80 via-orange-900/60 to-navy'")
 
@@ -181,6 +185,10 @@ class TrendingTopic(models.Model):
         blank=True,
         help_text="Markdown intro shown above the story list on the trending tag's page.",
     )
+    # Engagement counters. Maintained by the like / comment views so the
+    # frontend never has to aggregate at read time.
+    like_count = models.PositiveIntegerField(default=0)
+    comment_count = models.PositiveIntegerField(default=0)
     # Nullable: a trending hashtag may be cross-sport (e.g. #AFCON2026).
     category = models.ForeignKey(
         "categories.Category", on_delete=models.SET_NULL, null=True, blank=True,
@@ -201,3 +209,39 @@ class TrendingTopic(models.Model):
         if n >= 1000:
             return f"{n/1000:.1f}K"
         return str(n)
+
+
+class TrendingLike(models.Model):
+    """One row per (topic, user). Toggled by the trending like endpoint."""
+    topic = models.ForeignKey(TrendingTopic, on_delete=models.CASCADE, related_name="likes")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+                              related_name="trending_likes")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("topic", "user")
+
+
+class TrendingComment(models.Model):
+    """Discussion thread hung off a trending hashtag — flat (no replies) so the
+    UI stays close to a twitter-style mini-conversation."""
+    topic = models.ForeignKey(TrendingTopic, on_delete=models.CASCADE, related_name="comments")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+                              related_name="trending_comments")
+    body = models.TextField()
+    like_count = models.PositiveIntegerField(default=0)
+    is_flagged = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+
+
+class TrendingCommentLike(models.Model):
+    comment = models.ForeignKey(TrendingComment, on_delete=models.CASCADE, related_name="likes")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+                              related_name="trending_comment_likes")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("comment", "user")

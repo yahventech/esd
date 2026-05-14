@@ -28,11 +28,14 @@ function StoryTile({ story, onOpen }) {
       onClick={() => onOpen(story)}
       className="group text-left rounded-xl border border-white/[0.05] bg-navy-100/40 hover:border-gold/30 hover:bg-navy-100/60 overflow-hidden transition-all flex flex-col"
     >
-      <div className={`h-40 bg-gradient-to-br ${story.gradient || 'from-navy-200 via-navy-100 to-charcoal'} relative`}>
-        {story.coverImage && (
-          <img src={story.coverImage} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+      <div className={`relative bg-gradient-to-br ${story.gradient || 'from-navy-200 via-navy-100 to-charcoal'}`}>
+        {story.coverImage ? (
+          <img src={story.coverImage} alt="" loading="lazy"
+            className="block w-full max-h-[15rem] object-contain aspect-video" />
+        ) : (
+          <div className="w-full h-40" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-navy via-navy/40 to-transparent" />
+        <div className="absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-black/40 to-transparent pointer-events-none" />
         <span className={`absolute top-3 left-3 ${b.bg} px-2 py-0.5 font-display text-[10px] font-semibold uppercase tracking-[0.15em] text-white rounded`}>
           {story.category}
         </span>
@@ -47,7 +50,7 @@ function StoryTile({ story, onOpen }) {
           {story.headline}
         </h3>
         {story.summary && (
-          <p className="mt-2 text-[12px] text-gray-400 font-body line-clamp-2">{story.summary}</p>
+          <p className="mt-2 text-[12.5px] text-gray-400 font-body line-clamp-3">{story.summary}</p>
         )}
         {tags.length > 0 && (
           <div className="mt-auto pt-3 flex flex-wrap gap-1">

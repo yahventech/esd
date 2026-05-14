@@ -74,13 +74,18 @@ function StoryForm({ editing, onSaved, onCancel, showToast }) {
   const [coverFile, setCoverFile] = useState(null);
   const [coverPreview, setCoverPreview] = useState('');
   const [clearCover, setClearCover] = useState(false);
+  const [articleFile, setArticleFile] = useState(null);
+  const [articlePreview, setArticlePreview] = useState('');
+  const [clearArticle, setClearArticle] = useState(false);
   const fileRef = useRef(null);
+  const articleFileRef = useRef(null);
   const isEdit = Boolean(editing?.slug);
 
   useEffect(() => {
     if (!editing) {
       setForm(blank);
       setCoverFile(null); setCoverPreview(''); setClearCover(false);
+      setArticleFile(null); setArticlePreview(''); setClearArticle(false);
       return;
     }
     const loadDetail = async () => {
@@ -105,6 +110,14 @@ function StoryForm({ editing, onSaved, onCancel, showToast }) {
         setCoverFile(null);
         setCoverPreview(d.coverImage || '');
         setClearCover(false);
+        setArticleFile(null);
+        // Server may have filled articleImage with the cover URL as a fallback; only
+        // show a preview if the story actually has its own article image. Best-effort:
+        // if the article image differs from cover, show it; otherwise treat as unset.
+        setArticlePreview(
+          d.articleImage && d.articleImage !== d.coverImage ? d.articleImage : ''
+        );
+        setClearArticle(false);
       } catch (e) { setError(apiErrorMessage(e, 'Could not load story')); }
     };
     loadDetail();
@@ -127,6 +140,23 @@ function StoryForm({ editing, onSaved, onCancel, showToast }) {
     if (fileRef.current) fileRef.current.value = '';
   };
 
+  const pickArticleFile = (file) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { setError('Please choose an image file.'); return; }
+    if (file.size > 4 * 1024 * 1024) { setError('Image must be under 4 MB.'); return; }
+    setError('');
+    setArticleFile(file);
+    setArticlePreview(URL.createObjectURL(file));
+    setClearArticle(false);
+  };
+
+  const clearArticleNow = () => {
+    setArticleFile(null);
+    setArticlePreview('');
+    setClearArticle(true);
+    if (articleFileRef.current) articleFileRef.current.value = '';
+  };
+
   const submit = async (e) => {
     e.preventDefault();
     setError(''); setSaving(true);
@@ -146,7 +176,7 @@ function StoryForm({ editing, onSaved, onCancel, showToast }) {
       gradient: form.gradient || '',
     };
     const tagNames = Array.isArray(form.tag_names) ? form.tag_names : [];
-    const needsMultipart = coverFile || clearCover;
+    const needsMultipart = coverFile || clearCover || articleFile || clearArticle;
     let payload;
     if (needsMultipart) {
       const fd = new FormData();
@@ -157,6 +187,8 @@ function StoryForm({ editing, onSaved, onCancel, showToast }) {
       tagNames.forEach((t) => fd.append('tag_names', t));
       if (coverFile) fd.append('cover_image', coverFile);
       else if (clearCover) fd.append('cover_image', '');
+      if (articleFile) fd.append('article_image', articleFile);
+      else if (clearArticle) fd.append('article_image', '');
       payload = fd;
     } else {
       payload = { ...base, tag_names: tagNames };
@@ -220,6 +252,40 @@ function StoryForm({ editing, onSaved, onCancel, showToast }) {
             </div>
             <p className="text-[11px] text-gray-600 font-body">
               JPG / PNG / WebP. Renders full-bleed on story cards and the hero.
+            </p>
+          </div>
+        </div>
+      </Field>
+
+      <Field label="Article image" hint="Optional — shown inside the article, right after the headline. Falls back to the cover image when empty.">
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0 w-32 h-20 rounded-lg overflow-hidden border border-white/10 bg-white/[0.03] flex items-center justify-center">
+            {articlePreview ? (
+              <img src={articlePreview} alt="" className="w-full h-full object-contain" />
+            ) : (
+              <span className="text-[10px] text-gray-600 font-display uppercase tracking-wider">Uses cover</span>
+            )}
+          </div>
+          <div className="flex-1 flex flex-col gap-2">
+            <input
+              ref={articleFileRef}
+              type="file"
+              accept="image/*"
+              onChange={(e) => pickArticleFile(e.target.files?.[0])}
+              className="hidden"
+            />
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" onClick={() => articleFileRef.current?.click()}>
+                <Upload size={12} /> {articlePreview ? 'Replace' : 'Upload'}
+              </Button>
+              {articlePreview && (
+                <Button variant="ghost" size="sm" onClick={clearArticleNow}>
+                  <XIcon size={12} /> Remove
+                </Button>
+              )}
+            </div>
+            <p className="text-[11px] text-gray-600 font-body">
+              Up to 4 MB. Rendered uncropped inside the reader, so portraits and panoramas both look right.
             </p>
           </div>
         </div>

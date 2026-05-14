@@ -29,7 +29,7 @@ function StoryCard({ story, size = 'normal', onOpen }) {
 
   return (
     <article
-      className="group relative rounded-xl overflow-hidden cursor-pointer transition-all duration-400 hover:-translate-y-1 hover:shadow-xl hover:shadow-gold/[0.06] border border-white/[0.05] hover:border-gold/20 flex flex-col h-full"
+      className="group relative rounded-xl overflow-hidden cursor-pointer transition-all duration-400 hover:-translate-y-1 hover:shadow-xl hover:shadow-gold/[0.06] border border-white/[0.05] hover:border-gold/20 flex flex-col"
       style={{ background: 'rgba(15,31,58,0.6)' }}
       onClick={() => onOpen(story)}
       role="button"
@@ -42,19 +42,24 @@ function StoryCard({ story, size = 'normal', onOpen }) {
       }}
     >
       <div
-        className={`relative flex-shrink-0 ${isLarge ? 'h-56 sm:h-72' : 'h-40'} bg-gradient-to-br ${
+        className={`relative flex-shrink-0 bg-gradient-to-br ${
           story.gradient || 'from-navy-200 via-navy-100 to-charcoal'
         }`}
       >
-        {story.coverImage && (
+        {story.coverImage ? (
           <img
             src={story.coverImage}
             alt=""
-            className="absolute inset-0 w-full h-full object-cover"
+            // Object-contain so editors' images are never cropped. The wrapper's
+            // gradient fills any letterbox area. Aspect-video keeps the row
+            // visually balanced even when individual images vary widely.
+            className={`block w-full ${isLarge ? 'max-h-[26rem]' : 'max-h-[15rem]'} object-contain aspect-video`}
             loading="lazy"
           />
+        ) : (
+          <div className={`w-full ${isLarge ? 'h-56 sm:h-64' : 'h-40'}`} />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-navy via-navy/50 to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-black/40 to-transparent pointer-events-none" />
         <div className="absolute top-3 left-3 flex items-center gap-1.5">
           <span className={`${badge.bg} px-2 py-0.5 font-display text-[10px] font-semibold uppercase tracking-[0.15em] text-white rounded`}>
             {story.category}
@@ -84,8 +89,8 @@ function StoryCard({ story, size = 'normal', onOpen }) {
         }`}>
           {story.headline}
         </h3>
-        {isLarge && story.summary && (
-          <p className="mt-2 text-[13px] text-gray-400 font-body leading-relaxed line-clamp-2">
+        {story.summary && (
+          <p className={`mt-2 ${isLarge ? 'text-[13.5px]' : 'text-[12.5px]'} text-gray-400 font-body leading-relaxed line-clamp-3`}>
             {story.summary}
           </p>
         )}
@@ -290,7 +295,7 @@ export default function FeaturedStories() {
               No stories in {(categories.find((c) => c.slug === categoryFilter)?.name) || 'this sport'} yet.
             </p>
           ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
               {filteredStories.map((s) => (
                 <StoryCard key={s.id} story={s} onOpen={setOpen} />
               ))}
@@ -307,7 +312,7 @@ export default function FeaturedStories() {
             ) : allStories.length === 0 ? (
               <p className="py-10 text-center text-gray-500 font-body italic">No stories published yet.</p>
             ) : (
-              <div className="grid sm:grid-cols-2 gap-4">
+              <div className="grid sm:grid-cols-2 gap-4 items-start">
                 {allStories.map((story, i) => (
                   // Promote the most recent story to the large card so the grid still
                   // has an editorial focal point.
