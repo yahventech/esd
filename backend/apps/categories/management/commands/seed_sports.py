@@ -34,7 +34,7 @@ SPORTS = [
 # the sport-scoped story feed visitors click into from the Sports menu, and
 # Transfers stays because it's genuinely sport-specific.
 DEFAULT_SECTIONS = [
-    ("news",      "News",      "news",      "general",       "📰", "Latest headlines",   10),
+    ("news",      "News Feed", "news",      "general",       "📰", "Latest headlines",   10),
     ("transfers", "Transfers", "transfers", "international", "🔁", "Signings & rumours", 50),
 ]
 

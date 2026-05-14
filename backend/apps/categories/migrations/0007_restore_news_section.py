@@ -19,7 +19,7 @@ def restore_news_sections(apps, schema_editor):
         CategorySection.objects.create(
             category=cat,
             slug="news",
-            name="News",
+            name="News Feed",
             kind="news",
             scope="general",
             icon="📰",

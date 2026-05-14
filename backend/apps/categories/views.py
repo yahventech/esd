@@ -63,7 +63,7 @@ class CategoryViewSet(viewsets.ModelViewSet):
                 return Response({"detail": "Section not found."}, status=404)
             virtual = True
             default_names = {
-                "news": "News", "scores": "Scores", "transfers": "Transfers",
+                "news": "News Feed", "scores": "Scores", "transfers": "Transfers",
                 "fixtures": "Fixtures", "standings": "Standings", "teams": "Teams",
                 "players": "Gossip", "videos": "Videos", "custom": "More",
             }
