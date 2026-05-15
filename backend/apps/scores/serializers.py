@@ -44,33 +44,40 @@ class TeamSerializer(serializers.ModelSerializer):
     # so the frontend can group teams by league without a second round trip.
     competitions = serializers.SerializerMethodField()
 
+    primary_competition_slug = serializers.CharField(source="primary_competition.slug", read_only=True, default="")
+    primary_competition_name = serializers.CharField(source="primary_competition.name", read_only=True, default="")
+
     class Meta:
         model = Team
         fields = ("id", "slug", "name", "short_name", "flag", "logo", "logo_url",
                   "category", "category_slug", "category_name",
+                  "primary_competition", "primary_competition_slug", "primary_competition_name",
                   "country", "founded", "stadium", "manager", "description",
                   "primary_color", "website", "competitions")
-        read_only_fields = ("slug", "logo_url", "category_slug", "category_name", "competitions")
+        read_only_fields = ("slug", "logo_url", "category_slug", "category_name",
+                            "primary_competition_slug", "primary_competition_name", "competitions")
         extra_kwargs = {"logo": {"required": False, "allow_null": True}}
 
     def get_logo_url(self, obj):
         return _absolute_image(obj.logo, self.context)
 
     def get_competitions(self, obj):
-        # Distinct competitions this team has appeared in, ordered by the most
-        # recent season first so the "primary" competition (current league)
-        # naturally sorts to index 0. Used by the frontend to bucket teams in
-        # the sport-hub Teams grid.
+        # Distinct competitions this team has appeared in. Always returns the
+        # explicit primary_competition first when set, then any seasons-stats
+        # competitions in most-recent-season order. The frontend reads index
+        # 0 as the "current league" for the Teams grid grouping.
         seen = set()
         out = []
+        if obj.primary_competition_id:
+            comp = obj.primary_competition
+            seen.add(comp.id)
+            out.append({"id": comp.id, "slug": comp.slug, "name": comp.name, "scope": comp.scope})
         rows = (obj.season_stats
                   .select_related("competition", "season")
                   .order_by("-season__start_date", "competition__name"))
         for row in rows:
             comp = row.competition
-            if not comp:
-                continue
-            if comp.id in seen:
+            if not comp or comp.id in seen:
                 continue
             seen.add(comp.id)
             out.append({
@@ -190,12 +197,21 @@ class MatchSerializer(serializers.ModelSerializer):
     home = serializers.SerializerMethodField()
     away = serializers.SerializerMethodField()
     events = serializers.SerializerMethodField()
+    # Three time-display fields:
+    #  - kickoff:      the legacy time-only / display-override string. Kept so
+    #                  existing card UIs keep working unchanged.
+    #  - kickoff_date: human "Sat 18 May" (or "Today" / "Tomorrow" when close).
+    #  - kickoff_iso:  raw ISO so the frontend can format in the user's locale
+    #                  / timezone when finer control is needed (calendars, etc.).
     kickoff = serializers.SerializerMethodField()
+    kickoff_date = serializers.SerializerMethodField()
+    kickoff_iso = serializers.SerializerMethodField()
 
     class Meta:
         model = Match
         fields = ("id", "competition", "home", "away", "status", "minute",
-                  "kickoff", "venue", "events", "is_featured", "is_visible", "order",
+                  "kickoff", "kickoff_date", "kickoff_iso",
+                  "venue", "events", "is_featured", "is_visible", "order",
                   "external_source", "external_id", "last_synced_at",
                   "created_at", "updated_at")
 
@@ -221,6 +237,27 @@ class MatchSerializer(serializers.ModelSerializer):
         if obj.kickoff:
             return obj.kickoff.strftime("%H:%M EAT")
         return ""
+
+    def get_kickoff_date(self, obj):
+        # Friendly date label — 'Today', 'Tomorrow', or '<Day, Mon DD>'. Keeps
+        # the cards readable without needing the frontend to redo this work.
+        if not obj.kickoff:
+            return ""
+        from django.utils import timezone
+        now = timezone.now()
+        local = timezone.localtime(obj.kickoff) if timezone.is_aware(obj.kickoff) else obj.kickoff
+        today = timezone.localtime(now).date()
+        delta = (local.date() - today).days
+        if delta == 0:
+            return "Today"
+        if delta == 1:
+            return "Tomorrow"
+        if delta == -1:
+            return "Yesterday"
+        return local.strftime("%a, %b %d")
+
+    def get_kickoff_iso(self, obj):
+        return obj.kickoff.isoformat() if obj.kickoff else ""
 
 
 class MatchWriteSerializer(serializers.ModelSerializer):

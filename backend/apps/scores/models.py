@@ -83,6 +83,15 @@ class Team(models.Model):
         related_name="teams",
         help_text="Sport this team plays. Drives where the team shows up in the navbar Teams listing.",
     )
+    # Primary / current league. Drives the Teams grid grouping on the sport
+    # hub: editors pick once when adding a team, and that team appears under
+    # the chosen league header. Optional — teams without a primary league
+    # (e.g. national sides, free agents) fall into an 'Unaffiliated' bucket.
+    primary_competition = models.ForeignKey(
+        "Competition", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="primary_teams",
+        help_text="Current / main league this team plays in.",
+    )
     country = models.CharField(max_length=80, blank=True, default="")
     founded = models.PositiveIntegerField(null=True, blank=True)
     stadium = models.CharField(max_length=160, blank=True, default="")

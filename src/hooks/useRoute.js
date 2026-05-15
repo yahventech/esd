@@ -10,7 +10,7 @@ import { useCallback, useEffect, useState } from 'react';
 // Reserved top-level paths that bypass the category/section parser.
 // Each maps `/<slug>` to a discrete route type the App can render directly.
 // The trailing segment, if any, is interpreted as a sport-category filter.
-const RESERVED_TOP_LEVEL = new Set(['gossip', 'opinion', 'transfers']);
+const RESERVED_TOP_LEVEL = new Set(['gossip', 'opinion']);
 
 function parse(pathname) {
   const clean = (pathname || '').replace(/^\/+/, '').replace(/\/+$/, '');

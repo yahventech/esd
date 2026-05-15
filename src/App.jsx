@@ -14,7 +14,6 @@ import FeaturedStories from './components/FeaturedStories';
 import SportCategories from './components/SportCategories';
 import VideoHighlights from './components/VideoHighlights';
 import TransferNews from './components/TransferNews';
-import TransferHub from './components/TransferHub';
 import Newsletter from './components/Newsletter';
 import Footer from './components/Footer';
 import AuthModal from './components/AuthModal';
@@ -52,8 +51,6 @@ export default function App() {
           sectionSlug={route.sectionSlug || ''}
           navigate={navigate}
         />
-      ) : route.type === 'transfers' ? (
-        <TransferHub navigate={navigate} sportSlug={route.sportSlug || null} />
       ) : route.type === 'gossip' ? (
         <StoryListPage
           key={`gossip-${route.sportSlug || 'all'}`}

@@ -15,7 +15,7 @@ const FLAG_PRESETS = [
 ];
 
 const blank = {
-  name: '', flag: '', short_name: '', category: '',
+  name: '', flag: '', short_name: '', category: '', primary_competition: '',
   country: '', founded: '', stadium: '', manager: '',
   primary_color: '', website: '', description: '',
 };
@@ -51,8 +51,22 @@ function TeamForm({ editing, categories, onSaved, onCancel, showToast }) {
   const [logoFile, setLogoFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState('');
   const [clearLogo, setClearLogo] = useState(false);
+  const [competitions, setCompetitions] = useState([]);
   const fileRef = useRef(null);
   const isEdit = Boolean(editing?.slug);
+
+  // Load competitions once so the league dropdown can filter by the picked
+  // sport without a second round-trip per category change.
+  useEffect(() => {
+    let alive = true;
+    api.admin.competitions.list()
+      .then((res) => {
+        if (!alive) return;
+        setCompetitions(Array.isArray(res) ? res : (res?.results || []));
+      })
+      .catch(() => { if (alive) setCompetitions([]); });
+    return () => { alive = false; };
+  }, []);
 
   useEffect(() => {
     setForm(editing ? {
@@ -60,6 +74,7 @@ function TeamForm({ editing, categories, onSaved, onCancel, showToast }) {
       flag: editing.flag || '',
       short_name: editing.short_name || '',
       category: editing.category ?? '',
+      primary_competition: editing.primary_competition ?? '',
       country: editing.country || '',
       founded: editing.founded ?? '',
       stadium: editing.stadium || '',
@@ -77,6 +92,18 @@ function TeamForm({ editing, categories, onSaved, onCancel, showToast }) {
     { value: '', label: '— No sport / generic —' },
     ...categories.map((c) => ({ value: c.id, label: `${c.icon || ''} ${c.name}`.trim() })),
   ], [categories]);
+
+  // Filter competitions by the currently-picked sport so editors don't see a
+  // wall of cross-sport leagues when adding e.g. a basketball team.
+  const competitionOptions = useMemo(() => {
+    const filtered = form.category
+      ? competitions.filter((c) => String(c.category) === String(form.category) || !c.category)
+      : competitions;
+    return [
+      { value: '', label: competitions.length ? '— No primary league —' : '— Create competitions in Stats tab first —' },
+      ...filtered.map((c) => ({ value: c.id, label: c.category_name ? `${c.name} · ${c.category_name}` : c.name })),
+    ];
+  }, [competitions, form.category]);
 
   const pickFile = (file) => {
     if (!file) return;
@@ -109,6 +136,7 @@ function TeamForm({ editing, categories, onSaved, onCancel, showToast }) {
         flag: form.flag || '',
         short_name: form.short_name || '',
         category: form.category === '' ? null : Number(form.category),
+        primary_competition: form.primary_competition === '' ? null : Number(form.primary_competition),
         country: form.country || '',
         founded: form.founded === '' ? null : Number(form.founded),
         stadium: form.stadium || '',
@@ -152,6 +180,14 @@ function TeamForm({ editing, categories, onSaved, onCancel, showToast }) {
           <Select value={form.category} onChange={(v) => setField('category', v)} options={categoryOptions} />
         </Field>
       </div>
+
+      <Field label="League / competition" hint="Drives the league grouping on the sport's Teams page. Optional for national sides.">
+        <Select
+          value={form.primary_competition}
+          onChange={(v) => setField('primary_competition', v)}
+          options={competitionOptions}
+        />
+      </Field>
 
       <Field label="Crest / logo" hint="PNG or SVG. Overrides the flag on cards when present.">
         <div className="flex items-center gap-3">

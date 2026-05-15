@@ -48,15 +48,15 @@ function formatDelta(pct) {
   return `${arrow}${pct.toFixed(1)}%`;
 }
 
-function LineChart({ series, height = 220, animationKey = 0 }) {
+function LineChart({ series, height = 260, animationKey = 0, xLabel = 'Date', yLabel = 'Count' }) {
   // series: [{label, color, data: [{x: 'YYYY-MM-DD', y: number}]}]
   const [hover, setHover] = useState(null);
   const points = series[0]?.data || [];
   if (!points.length) {
-    return <EmptyChart label="No traffic data yet" hint="Visitor data will appear once the tracker has logged some page views." />;
+    return <EmptyChart label="No traffic data yet" hint="Page views will appear here as soon as the tracker captures some traffic. Browse the site in another tab to seed it." />;
   }
-  const PAD_L = 36, PAD_R = 16, PAD_T = 18, PAD_B = 32;
-  const W = 800, H = height;
+  const PAD_L = 56, PAD_R = 24, PAD_T = 24, PAD_B = 58;
+  const W = 900, H = height;
   const allY = series.flatMap((s) => s.data.map((d) => d.y));
   const maxY = Math.max(1, ...allY);
   const step = niceTickStep(maxY);
@@ -70,7 +70,7 @@ function LineChart({ series, height = 220, animationKey = 0 }) {
 
   return (
     <div className="w-full overflow-hidden">
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" preserveAspectRatio="none">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" preserveAspectRatio="xMidYMid meet">
         <defs>
           {series.map((s, i) => (
             <linearGradient key={`gradient-${i}`} id={`linegrad-${i}-${animationKey}`} x1="0" y1="0" x2="0" y2="1">
@@ -79,22 +79,37 @@ function LineChart({ series, height = 220, animationKey = 0 }) {
             </linearGradient>
           ))}
         </defs>
+        {/* Y-axis title (rotated) */}
+        <text x={16} y={H / 2} transform={`rotate(-90 16 ${H / 2})`} textAnchor="middle"
+          fontSize="11" fill="rgba(255,255,255,0.55)" fontFamily="Oswald, sans-serif" letterSpacing="1.5">
+          {yLabel.toUpperCase()}
+        </text>
+        {/* X-axis title */}
+        <text x={(W + PAD_L - PAD_R) / 2} y={H - 10} textAnchor="middle"
+          fontSize="11" fill="rgba(255,255,255,0.55)" fontFamily="Oswald, sans-serif" letterSpacing="1.5">
+          {xLabel.toUpperCase()}
+        </text>
         {gridLines.map((g) => (
           <g key={g}>
-            <line x1={PAD_L} x2={W - PAD_R} y1={yFor(g)} y2={yFor(g)} stroke="rgba(255,255,255,0.06)" strokeDasharray="2 4" />
-            <text x={PAD_L - 6} y={yFor(g) + 3} textAnchor="end" fontSize="9" fill="rgba(255,255,255,0.4)" fontFamily="monospace">
+            <line x1={PAD_L} x2={W - PAD_R} y1={yFor(g)} y2={yFor(g)} stroke="rgba(255,255,255,0.07)" strokeDasharray="2 4" />
+            <text x={PAD_L - 8} y={yFor(g) + 4} textAnchor="end" fontSize="11" fill="rgba(255,255,255,0.55)" fontFamily="monospace">
               {formatNumber(g)}
             </text>
           </g>
         ))}
+        {/* Baseline */}
+        <line x1={PAD_L} x2={W - PAD_R} y1={yFor(0)} y2={yFor(0)} stroke="rgba(255,255,255,0.15)" />
         {points.map((p, i) => {
-          // Show ~6 x-axis labels
-          const labelStride = Math.max(1, Math.floor(xCount / 6));
+          // Show ~7 x-axis tick labels evenly spaced
+          const labelStride = Math.max(1, Math.floor(xCount / 7));
           if (i % labelStride !== 0 && i !== xCount - 1) return null;
           return (
-            <text key={p.x + i} x={xFor(i)} y={H - PAD_B + 14} textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.45)">
-              {new Date(p.x).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-            </text>
+            <g key={p.x + i}>
+              <line x1={xFor(i)} y1={yFor(0)} x2={xFor(i)} y2={yFor(0) + 4} stroke="rgba(255,255,255,0.25)" />
+              <text x={xFor(i)} y={H - PAD_B + 16} textAnchor="middle" fontSize="11" fill="rgba(255,255,255,0.7)" fontFamily="Source Sans 3, sans-serif">
+                {new Date(p.x).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+              </text>
+            </g>
           );
         })}
         {series.map((s, sIdx) => {
@@ -103,20 +118,25 @@ function LineChart({ series, height = 220, animationKey = 0 }) {
           return (
             <g key={s.label}>
               <path d={areaD} fill={`url(#linegrad-${sIdx}-${animationKey})`} className="line-area" />
-              <path d={pathD} fill="none" stroke={s.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                style={{ strokeDasharray: 2000, strokeDashoffset: 2000, animation: `line-draw-${animationKey} 1.2s ease-out forwards` }} />
+              <path d={pathD} fill="none" stroke={s.color} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"
+                style={{ strokeDasharray: 3000, strokeDashoffset: 3000, animation: `line-draw-${animationKey} 1.2s ease-out forwards` }} />
               {s.data.map((d, i) => (
-                <circle key={`${sIdx}-${i}`} cx={xFor(i)} cy={yFor(d.y)} r={hover && hover.sIdx === sIdx && hover.i === i ? 4 : 0}
+                <circle key={`${sIdx}-${i}`} cx={xFor(i)} cy={yFor(d.y)} r={hover && hover.i === i ? 4 : 0}
                   fill={s.color} stroke="#0A1628" strokeWidth="2" />
               ))}
             </g>
           );
         })}
+        {/* Hover guide line */}
+        {hover != null && (
+          <line x1={xFor(hover.i)} x2={xFor(hover.i)} y1={PAD_T} y2={yFor(0)}
+            stroke="rgba(255,215,0,0.35)" strokeDasharray="3 3" />
+        )}
         {/* Invisible hit areas for hover */}
         {points.map((_, i) => (
           <rect key={`hit-${i}`} x={xFor(i) - 12} y={PAD_T} width="24" height={H - PAD_T - PAD_B}
             fill="transparent"
-            onMouseEnter={() => setHover({ i, sIdx: 0 })}
+            onMouseEnter={() => setHover({ i })}
             onMouseLeave={() => setHover(null)} />
         ))}
       </svg>
@@ -125,68 +145,119 @@ function LineChart({ series, height = 220, animationKey = 0 }) {
         .line-area { opacity: 0; animation: line-fade-${animationKey} 0.8s ease-out 0.4s forwards; }
         @keyframes line-fade-${animationKey} { to { opacity: 1; } }
       `}</style>
-      {/* Tooltip strip */}
-      <div className="mt-2 flex items-center justify-end gap-4 text-[11px] font-body">
-        {series.map((s) => (
-          <span key={s.label} className="inline-flex items-center gap-1.5 text-gray-400">
-            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: s.color }} />
-            {s.label}
-            {hover && (
-              <span className="text-white font-mono ml-1">
-                {formatNumber(s.data[hover.i]?.y || 0)}
+      {/* Legend + hover readout */}
+      <div className="mt-3 flex items-center justify-between gap-4 text-[12px] font-body flex-wrap">
+        <div className="flex items-center gap-4">
+          {series.map((s) => (
+            <span key={s.label} className="inline-flex items-center gap-2 text-gray-300">
+              <span className="w-3 h-3 rounded-full" style={{ backgroundColor: s.color }} />
+              {s.label}
+            </span>
+          ))}
+        </div>
+        {hover != null && (
+          <div className="flex items-center gap-3 text-[12px] font-body">
+            <span className="text-gray-500">
+              {new Date(points[hover.i]?.x).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+            </span>
+            {series.map((s) => (
+              <span key={s.label} className="inline-flex items-center gap-1">
+                <span className="text-gray-500">{s.label}:</span>
+                <span className="font-mono font-semibold text-white">{formatNumber(s.data[hover.i]?.y || 0)}</span>
               </span>
-            )}
-          </span>
-        ))}
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function BarChart({ data, height = 220, color = GOLD, label = '' }) {
-  // data: [{label, value, color?}]
-  if (!data.length) return <EmptyChart label="No data yet" />;
-  const PAD_L = 36, PAD_R = 16, PAD_T = 14, PAD_B = 40;
-  const W = 800, H = height;
+function BarChart({ data, height = 280, color = GOLD, xLabel = '', yLabel = 'Count' }) {
+  // data: [{label, value, color?}]. Long labels are rotated -35° so they
+  // never overlap, and we always show the full label on hover.
+  const [hoverIdx, setHoverIdx] = useState(null);
+  if (!data.length) {
+    return <EmptyChart label="No data yet" hint="Numbers will appear here as visitors interact with the site." />;
+  }
+  // Bigger bottom padding so rotated labels fit without clipping.
+  const PAD_L = 56, PAD_R = 24, PAD_T = 24, PAD_B = 96;
+  const W = 900, H = height;
   const maxV = Math.max(1, ...data.map((d) => d.value));
   const step = niceTickStep(maxV);
   const yTop = Math.ceil(maxV / step) * step;
   const bw = (W - PAD_L - PAD_R) / data.length;
-  const gap = Math.min(8, bw * 0.2);
+  const gap = Math.min(10, bw * 0.18);
+  const baseY = H - PAD_B;
+
+  // Y-grid lines — show 5 evenly stepped ticks.
+  const ticks = [];
+  for (let v = 0; v <= yTop; v += step) ticks.push(v);
   return (
     <div className="w-full">
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto">
-        {[0, step, step * 2, step * 3, yTop].filter((v) => v <= yTop).map((g) => (
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" preserveAspectRatio="xMidYMid meet">
+        {/* Y-axis title */}
+        <text x={16} y={H / 2 - 30} transform={`rotate(-90 16 ${H / 2 - 30})`} textAnchor="middle"
+          fontSize="11" fill="rgba(255,255,255,0.55)" fontFamily="Oswald, sans-serif" letterSpacing="1.5">
+          {yLabel.toUpperCase()}
+        </text>
+        {/* X-axis title */}
+        {xLabel && (
+          <text x={(W + PAD_L - PAD_R) / 2} y={H - 6} textAnchor="middle"
+            fontSize="11" fill="rgba(255,255,255,0.55)" fontFamily="Oswald, sans-serif" letterSpacing="1.5">
+            {xLabel.toUpperCase()}
+          </text>
+        )}
+        {ticks.map((g) => (
           <g key={g}>
-            <line x1={PAD_L} x2={W - PAD_R} y1={PAD_T + (H - PAD_T - PAD_B) * (1 - g / yTop)} y2={PAD_T + (H - PAD_T - PAD_B) * (1 - g / yTop)} stroke="rgba(255,255,255,0.05)" />
-            <text x={PAD_L - 6} y={PAD_T + (H - PAD_T - PAD_B) * (1 - g / yTop) + 3} textAnchor="end" fontSize="9" fill="rgba(255,255,255,0.4)" fontFamily="monospace">
+            <line x1={PAD_L} x2={W - PAD_R} y1={PAD_T + (H - PAD_T - PAD_B) * (1 - g / yTop)} y2={PAD_T + (H - PAD_T - PAD_B) * (1 - g / yTop)} stroke="rgba(255,255,255,0.07)" strokeDasharray="2 4" />
+            <text x={PAD_L - 8} y={PAD_T + (H - PAD_T - PAD_B) * (1 - g / yTop) + 4} textAnchor="end" fontSize="11" fill="rgba(255,255,255,0.55)" fontFamily="monospace">
               {formatNumber(g)}
             </text>
           </g>
         ))}
+        {/* Baseline */}
+        <line x1={PAD_L} x2={W - PAD_R} y1={baseY} y2={baseY} stroke="rgba(255,255,255,0.15)" />
         {data.map((d, i) => {
           const x = PAD_L + i * bw + gap / 2;
           const h = (H - PAD_T - PAD_B) * (d.value / yTop);
           const y = H - PAD_B - h;
           const w = bw - gap;
-          const baseY = H - PAD_B;
+          const labelX = x + w / 2;
+          const labelY = baseY + 14;
+          const hovered = hoverIdx === i;
           return (
-            <g key={d.label + i}>
-              {/* scaleY from the baseline — works in every browser without
-                  relying on animating raw SVG attribute values. */}
+            <g key={d.label + i}
+               onMouseEnter={() => setHoverIdx(i)}
+               onMouseLeave={() => setHoverIdx(null)}>
+              {/* Bigger transparent hit area so hover works even off the bar */}
+              <rect x={x - 2} y={PAD_T} width={w + 4} height={baseY - PAD_T} fill="transparent" />
               <g style={{
                 transformOrigin: `${x + w / 2}px ${baseY}px`,
                 transform: 'scaleY(0)',
                 animation: `bar-grow 0.7s cubic-bezier(.2,.7,.3,1) ${i * 0.05}s forwards`,
               }}>
-                <rect x={x} y={y} width={w} height={h} rx={3} fill={d.color || color} />
+                <rect x={x} y={y} width={w} height={h} rx={3} fill={d.color || color}
+                      opacity={hovered ? 1 : 0.85} />
               </g>
-              <text x={x + w / 2} y={baseY + 14} textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.55)">
-                {d.label.length > 12 ? d.label.slice(0, 10) + '…' : d.label}
+              {/* Tick mark */}
+              <line x1={labelX} x2={labelX} y1={baseY} y2={baseY + 4} stroke="rgba(255,255,255,0.25)" />
+              {/* Rotated label so long names fit. Anchored at top-right of the tick. */}
+              <text
+                x={labelX}
+                y={labelY}
+                fontSize="11"
+                fill={hovered ? 'rgba(255,215,0,0.95)' : 'rgba(255,255,255,0.75)'}
+                fontFamily="Source Sans 3, sans-serif"
+                textAnchor="end"
+                transform={`rotate(-35 ${labelX} ${labelY})`}
+              >
+                {d.label.length > 22 ? d.label.slice(0, 20) + '…' : d.label}
               </text>
               {d.value > 0 && (
-                <text x={x + w / 2} y={y - 4} textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.85)" fontFamily="monospace"
-                  style={{ opacity: 0, animation: `fade-up 0.4s ease-out ${0.5 + i * 0.05}s forwards` }}>
+                <text x={x + w / 2} y={y - 6} textAnchor="middle" fontSize="11" fill="rgba(255,255,255,0.92)"
+                      fontFamily="monospace" fontWeight="600"
+                      style={{ opacity: 0, animation: `fade-up 0.4s ease-out ${0.5 + i * 0.05}s forwards` }}>
                   {formatNumber(d.value)}
                 </text>
               )}
@@ -198,15 +269,23 @@ function BarChart({ data, height = 220, color = GOLD, label = '' }) {
         @keyframes bar-grow { to { transform: scaleY(1); } }
         @keyframes fade-up { to { opacity: 1; } }
       `}</style>
-      {label && <div className="text-center text-[10px] uppercase tracking-wider text-gray-500 font-display mt-1">{label}</div>}
+      {/* Hovered full-label readout — covers the truncated case */}
+      {hoverIdx != null && (
+        <div className="mt-2 text-center text-[12px] font-body text-gray-300">
+          <span className="font-display uppercase tracking-wider text-gray-500 mr-2">
+            {data[hoverIdx]?.label}
+          </span>
+          <span className="font-mono font-semibold text-gold">{formatNumber(data[hoverIdx]?.value || 0)}</span>
+        </div>
+      )}
     </div>
   );
 }
 
-function DonutChart({ data, size = 200, centerLabel = '' }) {
+function DonutChart({ data, size = 220, centerLabel = '' }) {
   // data: [{label, value, color?}]
   if (!data.length || data.every((d) => !d.value)) {
-    return <EmptyChart label="No data yet" />;
+    return <EmptyChart label="No data yet" hint="Once the tracker captures sessions, the device breakdown will appear here." />;
   }
   const total = data.reduce((acc, d) => acc + d.value, 0);
   const cx = size / 2, cy = size / 2;
@@ -239,10 +318,10 @@ function DonutChart({ data, size = 200, centerLabel = '' }) {
           <path key={i} d={a.path} fill={a.color}
             style={{ opacity: 0, transformOrigin: `${cx}px ${cy}px`, animation: `donut-in 0.5s ease-out ${i * 0.08}s forwards` }} />
         ))}
-        <text x={cx} y={cy - 2} textAnchor="middle" fontSize="14" fontWeight="700" fill="white" fontFamily="Oswald, sans-serif">
+        <text x={cx} y={cy - 4} textAnchor="middle" fontSize="22" fontWeight="700" fill="white" fontFamily="Oswald, sans-serif">
           {formatNumber(total)}
         </text>
-        <text x={cx} y={cy + 14} textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.5)" fontFamily="Oswald, sans-serif" letterSpacing="1">
+        <text x={cx} y={cy + 14} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.55)" fontFamily="Oswald, sans-serif" letterSpacing="1.5">
           {(centerLabel || 'TOTAL').toUpperCase()}
         </text>
       </svg>
@@ -317,8 +396,8 @@ function EmptyChart({ label, hint }) {
 
 // --- Cards / sections ---------------------------------------------------- //
 
-function StatTile({ icon: Icon, label, value, hint, delta, accent = 'gold' }) {
-  const arrow = delta == null ? null : delta > 0 ? <TrendingUp size={11} /> : delta < 0 ? <TrendingDown size={11} /> : <Minus size={11} />;
+function StatTile({ icon: Icon, label, value, valueSuffix, hint, delta, accent = 'gold', tooltip }) {
+  const arrow = delta == null ? null : delta > 0 ? <TrendingUp size={12} /> : delta < 0 ? <TrendingDown size={12} /> : <Minus size={12} />;
   const deltaCls = delta == null
     ? 'text-gray-500'
     : delta > 0 ? 'text-emerald-400' : delta < 0 ? 'text-red-400' : 'text-gray-500';
@@ -329,20 +408,21 @@ function StatTile({ icon: Icon, label, value, hint, delta, accent = 'gold' }) {
     violet: 'from-violet-500/20 to-violet-700/10 border-violet-500/30 text-violet-300',
   };
   return (
-    <div className={`relative rounded-xl border bg-gradient-to-br ${tones[accent]} p-4 overflow-hidden animate-fade-in`}>
+    <div title={tooltip} className={`relative rounded-xl border bg-gradient-to-br ${tones[accent]} p-4 overflow-hidden animate-fade-in`}>
       <div className="flex items-start justify-between gap-2 mb-3">
         <Icon size={16} />
         {delta != null && (
-          <span className={`inline-flex items-center gap-0.5 text-[10px] font-mono ${deltaCls}`}>
+          <span className={`inline-flex items-center gap-0.5 text-[11px] font-mono ${deltaCls}`}>
             {arrow} {formatDelta(delta)}
           </span>
         )}
       </div>
       <div className="font-display text-2xl sm:text-3xl font-bold text-white tabular-nums">
         {formatNumber(value)}
+        {valueSuffix && <span className="text-base font-display text-white/60 ml-1">{valueSuffix}</span>}
       </div>
-      <div className="font-display text-[10px] uppercase tracking-[0.15em] text-white/70 mt-1">{label}</div>
-      {hint && <div className="text-[10px] font-body text-white/50 mt-0.5">{hint}</div>}
+      <div className="font-display text-[11px] uppercase tracking-[0.15em] text-white/80 mt-1">{label}</div>
+      {hint && <div className="text-[11px] font-body text-white/55 mt-0.5">{hint}</div>}
     </div>
   );
 }
@@ -361,13 +441,18 @@ function MiniStat({ icon: Icon, label, value }) {
   );
 }
 
-function Card({ title, action, children, padding = true }) {
+function Card({ title, subtitle, action, children, padding = true }) {
   return (
     <div className="rounded-xl border border-white/[0.06] bg-navy-100/30 overflow-hidden animate-fade-in">
       {(title || action) && (
-        <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-white/[0.05]">
-          <h3 className="font-display text-[11px] uppercase tracking-[0.18em] text-gold/80">{title}</h3>
-          {action}
+        <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-white/[0.05]">
+          <div className="min-w-0">
+            <h3 className="font-display text-[12px] uppercase tracking-[0.18em] text-gold/80 truncate">{title}</h3>
+            {subtitle && (
+              <p className="text-[11px] font-body text-gray-500 mt-0.5 leading-snug">{subtitle}</p>
+            )}
+          </div>
+          {action && <div className="shrink-0">{action}</div>}
         </div>
       )}
       <div className={padding ? 'p-4' : ''}>{children}</div>
@@ -494,7 +579,7 @@ export default function AnalyticsManager({ showToast }) {
             <span className="bg-gradient-to-r from-gold to-yellow-400 bg-clip-text text-transparent">Analytics</span>
           </h2>
           <p className="text-[12px] font-body text-gray-500 mt-1">
-            Live traffic, engagement, and content performance — sampled from {summary?.window_days || days} days.
+            Visitor traffic, engagement, and content performance over the last {summary?.window_days || days} days. Switch the window with the chips on the right.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -530,28 +615,35 @@ export default function AnalyticsManager({ showToast }) {
           label="Page views"
           value={summary?.views?.value || 0}
           delta={summary?.views?.delta_pct}
+          hint={`vs previous ${days}d`}
           accent="gold"
+          tooltip="Total page renders tracked by the frontend pixel in this window."
         />
         <StatTile
           icon={Users}
           label="Unique visitors"
           value={summary?.unique_visitors?.value || 0}
           delta={summary?.unique_visitors?.delta_pct}
+          hint="distinct sessions"
           accent="emerald"
+          tooltip="Distinct browser sessions in the window — identified by a persistent localStorage id."
         />
         <StatTile
           icon={Activity}
           label="Engagement events"
           value={summary?.events || 0}
-          hint={`Across ${formatNumber(engagement?.total || 0)} interactions`}
+          hint="clicks, plays, bookmarks…"
           accent="sky"
+          tooltip="Discrete actions outside of plain page views: bookmark, video play, transfer open, etc."
         />
         <StatTile
           icon={Clock}
-          label="Avg session"
+          label="Avg time on page"
           value={Math.round((summary?.avg_duration_ms || 0) / 1000)}
-          hint="seconds per page"
+          valueSuffix="s"
+          hint="seconds between navigations"
           accent="violet"
+          tooltip="Mean dwell time on a page before the visitor navigated away. Pages still in flight are excluded."
         />
       </div>
 
@@ -569,19 +661,21 @@ export default function AnalyticsManager({ showToast }) {
       {/* Traffic line chart — full width */}
       <Card
         title="Traffic over time"
+        subtitle="Daily page views (gold) vs unique visitor sessions (green). Hover any day for exact numbers."
         action={
-          <span className="text-[10px] font-body text-gray-500 inline-flex items-center gap-1">
-            <Calendar size={11} /> Last {days} days
+          <span className="text-[11px] font-body text-gray-500 inline-flex items-center gap-1">
+            <Calendar size={12} /> Last {days} days
           </span>
         }
       >
-        <LineChart series={trafficSeries} animationKey={bump} />
+        <LineChart series={trafficSeries} animationKey={bump} xLabel="Date" yLabel="Page views" />
       </Card>
 
       {/* Two-up: realtime + engagement */}
       <div className="grid lg:grid-cols-3 gap-4">
         <Card
           title="Live activity"
+          subtitle="Most recent visitor actions across the site. Refreshes every 12 seconds."
           action={
             <span className="inline-flex items-center gap-1 text-[10px] font-display uppercase tracking-wider text-emerald-300">
               <span className="relative flex h-1.5 w-1.5">
@@ -618,28 +712,44 @@ export default function AnalyticsManager({ showToast }) {
           </div>
         </Card>
 
-        <Card title="Engagement by event">
-          <BarChart data={engagementBars} height={260} />
+        <Card
+          title="Engagement by event"
+          subtitle="What visitors are doing. Each bar is one event type."
+        >
+          <BarChart data={engagementBars} height={300} xLabel="Event type" yLabel="Count" />
         </Card>
 
-        <Card title="Hourly heatmap (24h)">
+        <Card
+          title="Hourly traffic — last 24h"
+          subtitle="Darker = more page views in that hour. Hover any tile for the count."
+        >
           <HourHeatmap series={hourly?.series} />
         </Card>
       </div>
 
       {/* Categories + Devices */}
       <div className="grid lg:grid-cols-2 gap-4">
-        <Card title="Top categories">
-          <BarChart data={categoryBars} height={260} />
+        <Card
+          title="Top sport categories"
+          subtitle="Page views grouped by the sport the visitor was reading."
+        >
+          <BarChart data={categoryBars} height={300} xLabel="Sport" yLabel="Page views" />
         </Card>
-        <Card title="Device breakdown">
-          <DonutChart data={devicesDonut} centerLabel="Devices" />
+        <Card
+          title="Device breakdown"
+          subtitle="How visitors are connecting. Useful for prioritising mobile vs desktop QA."
+        >
+          <DonutChart data={devicesDonut} centerLabel="Sessions" />
         </Card>
       </div>
 
       {/* Top stories table + referrers */}
       <div className="grid lg:grid-cols-3 gap-4">
-        <Card title={`Top stories · ${days}d`} padding={false}>
+        <Card
+          title={`Top stories · ${days}d`}
+          subtitle="Most-viewed published stories in this window."
+          padding={false}
+        >
           <div className="divide-y divide-white/[0.04]">
             {(content?.top_stories || []).length === 0 ? (
               <div className="p-6 text-center text-[12px] text-gray-500 font-body italic">No story analytics yet.</div>
@@ -669,7 +779,11 @@ export default function AnalyticsManager({ showToast }) {
           </div>
         </Card>
 
-        <Card title="Top videos" padding={false}>
+        <Card
+          title="Top videos"
+          subtitle="Ranked by lifetime plays. Independent of the window above."
+          padding={false}
+        >
           <div className="divide-y divide-white/[0.04]">
             {(content?.top_videos || []).length === 0 ? (
               <div className="p-6 text-center text-[12px] text-gray-500 font-body italic">No video data yet.</div>
@@ -698,7 +812,11 @@ export default function AnalyticsManager({ showToast }) {
           </div>
         </Card>
 
-        <Card title="Top transfers" padding={false}>
+        <Card
+          title="Top transfers"
+          subtitle="Most-opened transfer items. Breaking moves are flagged."
+          padding={false}
+        >
           <div className="divide-y divide-white/[0.04]">
             {(content?.top_transfers || []).length === 0 ? (
               <div className="p-6 text-center text-[12px] text-gray-500 font-body italic">No transfer analytics yet.</div>
@@ -728,18 +846,18 @@ export default function AnalyticsManager({ showToast }) {
       </div>
 
       {/* Referrers */}
-      <Card title="Referrers">
-        <BarChart data={referrerBars} height={220} />
+      <Card
+        title="Where visitors come from"
+        subtitle="Top referring hosts in this window. 'direct / app' covers visits with no referrer header (typed URLs, bookmarks, the EASD app shell)."
+      >
+        <BarChart data={referrerBars} height={280} xLabel="Source" yLabel="Page views" />
       </Card>
 
       {/* Tracker hint footer */}
       <div className="rounded-xl border border-white/[0.04] bg-navy-100/20 p-4 flex items-start gap-3">
         <Layers size={16} className="text-gold/50 shrink-0 mt-0.5" />
         <div className="text-[12px] font-body text-gray-400 leading-relaxed">
-          The analytics tracker fires from the frontend on every route change and key interaction
-          (bookmark, video play, transfer open). All data is privacy-respecting — IP addresses are
-          hashed at write time and the dashboard never sees raw identifiers. Numbers refresh on
-          tab focus and the live feed polls every 12 seconds.
+          <span className="text-white font-semibold">How this works.</span> The tracker fires from the frontend on every route change and key interaction (bookmark, video play, transfer open). Charts are tinted gold for primary metrics, emerald for unique sessions, sky for engagement. Bar labels rotate so long event names ('Transfer card open', 'Session start') fit without clipping; hover any bar to see the full label and exact value. <span className="text-white">Privacy:</span> IP addresses are hashed at write time and never reach the dashboard, only a stable per-browser id is used to count "unique visitors". The live feed polls every 12 seconds.
         </div>
       </div>
     </div>

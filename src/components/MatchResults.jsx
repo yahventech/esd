@@ -2,7 +2,7 @@
 // Grid of finished matches with final scores. Click a card to view the event timeline.
 
 import { useState } from 'react';
-import { Trophy, Clock, ChevronDown } from 'lucide-react';
+import { Trophy, Clock, ChevronDown, CalendarDays } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 import { useScrollAnimation } from '../hooks/useScrollAnimation';
 import { MatchDetailModal } from './LiveScores';
@@ -65,9 +65,18 @@ function ResultCard({ match, onOpen }) {
         <TeamLine team={match.home} isWinner={homeWin} isDraw={isDraw} />
         <TeamLine team={match.away} isWinner={awayWin} isDraw={isDraw} />
       </div>
-      {match.kickoff && (
-        <div className="mt-3 pt-2.5 border-t border-white/[0.04] flex items-center gap-1.5 text-[10px] text-gray-500 font-body">
-          <Clock size={10} /> {match.kickoff}
+      {(match.kickoff || match.kickoff_date) && (
+        <div className="mt-3 pt-2.5 border-t border-white/[0.04] flex items-center justify-between gap-2 text-[10px] text-gray-500 font-body">
+          {match.kickoff_date && (
+            <span className="inline-flex items-center gap-1 text-gold/70 font-display uppercase tracking-wider">
+              <CalendarDays size={10} /> {match.kickoff_date}
+            </span>
+          )}
+          {match.kickoff && (
+            <span className="inline-flex items-center gap-1">
+              <Clock size={10} /> {match.kickoff}
+            </span>
+          )}
         </div>
       )}
     </div>

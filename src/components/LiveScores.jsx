@@ -34,7 +34,7 @@ function MatchCard({ match, onOpen }) {
         <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-red-500 via-emerald to-red-500" />
       )}
 
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between gap-2 mb-1">
         <span className="font-display text-[10px] font-medium uppercase tracking-[0.15em] text-gray-500 truncate">
           {match.competition}
         </span>
@@ -51,9 +51,14 @@ function MatchCard({ match, onOpen }) {
         ) : isFT ? (
           <span className="font-display text-[10px] font-bold text-gray-400 uppercase tracking-wider">FT</span>
         ) : (
-          <span className="font-mono text-[11px] text-gold/60">{match.kickoff}</span>
+          <span className="font-mono text-[11px] text-gold/70">{match.kickoff}</span>
         )}
       </div>
+      {match.kickoff_date && !isLive && !isFT && (
+        <div className="mb-2 font-display text-[10px] uppercase tracking-wider text-gold/70">
+          {match.kickoff_date}
+        </div>
+      )}
 
       <div className="space-y-2.5">
         <TeamRow
@@ -198,7 +203,9 @@ export function MatchDetailModal({ match: initialMatch, onClose }) {
                 <span className="font-display text-xs font-bold text-gray-400 uppercase tracking-wider">Full Time</span>
               ) : (
                 <span className="font-mono text-xs text-gold/70 flex items-center gap-1.5">
-                  <Clock size={12} /> {live.kickoff || 'TBD'}
+                  <Clock size={12} />
+                  {live.kickoff_date ? `${live.kickoff_date} · ` : ''}
+                  {live.kickoff || 'TBD'}
                 </span>
               )}
             </div>

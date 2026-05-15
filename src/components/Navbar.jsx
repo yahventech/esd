@@ -13,7 +13,7 @@ const moreLinks = [
   { label: 'Live Scores', sectionId: 'live-scores' },
   { label: 'Fixtures', sectionId: 'fixtures' },
   { label: 'Results', sectionId: 'results' },
-  { label: 'Transfers', path: 'transfers' },
+  { label: 'Transfers', sectionId: 'transfers' },
   { label: 'Explore Sports', sectionId: 'sports' },
   { label: 'Highlights', sectionId: 'highlights' },
   { label: 'Newsletter', sectionId: 'newsletter' },
@@ -478,7 +478,7 @@ export default function Navbar({ navigate, route }) {
                                       <div className="flex items-center justify-center py-6">
                                         <Loader2 size={16} className="animate-spin text-gold/60" />
                                       </div>
-                                    ) : latest.length > 0 ? (
+                                    ) : (hero || latest.length > 0) ? (
                                       <ul className="space-y-2.5">
                                         {[hero, ...latest].filter(Boolean).slice(0, 5).map((s) => (
                                           <li key={s.id}>

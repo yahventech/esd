@@ -6,7 +6,7 @@
 
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import {
-  ChevronLeft, Loader2, Trophy, ArrowUp, ArrowDown, Minus, Activity,
+  ChevronLeft, Loader2, Trophy, ArrowUp, ArrowDown, Minus, Activity, X,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { useAppData } from '../context/AppDataContext';
@@ -162,6 +162,219 @@ function ScoresWithToggle({ categorySlug, onOpen }) {
 }
 
 
+// Transfer-news feed for a single sport. Drops in as the body of the
+// per-sport /<slug>/transfers section so editors don't need a separate hub —
+// every transfer the desk has filed for this sport lives here, grouped by
+// status so the marquee beats ('Here we go', 'Agreed') sit above quieter
+// rumours and rejected moves.
+function TransfersPanel({ categorySlug }) {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [openItem, setOpenItem] = useState(null);
+
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    api.transfers.list(`category__slug=${encodeURIComponent(categorySlug)}&page_size=100`)
+      .then((res) => {
+        if (!alive) return;
+        setItems(Array.isArray(res) ? res : (res?.results || []));
+      })
+      .catch(() => { if (alive) setItems([]); })
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, [categorySlug]);
+
+  const STATUS_PILL = {
+    rumor:      { label: 'Rumour',     cls: 'bg-gray-500/10 text-gray-300 border-gray-500/30' },
+    talks:      { label: 'In talks',   cls: 'bg-sky-500/10 text-sky-300 border-sky-500/30' },
+    agreed:     { label: 'Agreed',     cls: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30' },
+    medical:    { label: 'Medical',    cls: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30' },
+    here_we_go: { label: 'Here we go', cls: 'bg-gold/20 text-gold border-gold/50' },
+    completed:  { label: 'Done deal',  cls: 'bg-emerald-500/20 text-emerald-200 border-emerald-500/50' },
+    loan:       { label: 'Loan',       cls: 'bg-indigo-500/10 text-indigo-300 border-indigo-500/30' },
+    rejected:   { label: 'Rejected',   cls: 'bg-red-500/10 text-red-300 border-red-500/30' },
+  };
+
+  // Bucket by status so the headline beats cluster.
+  const grouped = useMemo(() => {
+    const ORDER = ['here_we_go', 'completed', 'agreed', 'medical', 'talks', 'loan', 'rumor', 'rejected'];
+    const buckets = new Map();
+    for (const it of items) {
+      const k = it.transfer_status || 'rumor';
+      if (!buckets.has(k)) buckets.set(k, []);
+      buckets.get(k).push(it);
+    }
+    const out = [];
+    for (const k of ORDER) {
+      if (buckets.has(k)) out.push({ key: k, label: STATUS_PILL[k]?.label || k, items: buckets.get(k) });
+    }
+    return out;
+  }, [items]);
+
+  if (loading) {
+    return <div className="py-16 flex justify-center"><Loader2 size={22} className="text-gold animate-spin" /></div>;
+  }
+
+  if (!items.length) {
+    return (
+      <div className="rounded-xl border border-white/[0.05] bg-navy-100/30 p-10 text-center text-gray-500 font-body text-sm">
+        No transfer items filed for this sport yet. Editors can publish them from the admin dashboard's <span className="text-gold">Transfers</span> tab.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {grouped.map((g) => (
+        <div key={g.key} className="space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="w-1 h-4 rounded-full bg-gold/60" />
+            <h3 className="font-display text-[12px] sm:text-[13px] font-bold uppercase tracking-[0.15em] text-white">
+              {g.label}
+            </h3>
+            <span className="font-display text-[10px] uppercase tracking-wider text-gray-500">
+              {g.items.length} {g.items.length === 1 ? 'item' : 'items'}
+            </span>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {g.items.map((t) => {
+              const pill = STATUS_PILL[t.transfer_status] || STATUS_PILL.rumor;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setOpenItem(t)}
+                  className={`group text-left rounded-xl border bg-navy-100/40 p-3 transition-all hover:-translate-y-0.5 ${
+                    t.is_breaking
+                      ? 'border-gold/40 shadow-[0_0_24px_-12px_rgba(255,215,0,0.4)]'
+                      : 'border-white/[0.05] hover:border-gold/30'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-display text-[9px] uppercase tracking-[0.12em] border ${pill.cls}`}>
+                      {pill.label}
+                    </span>
+                    {t.is_breaking && (
+                      <span className="font-display text-[9px] font-bold uppercase tracking-wider text-red-400">Breaking</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-white/[0.04] border border-white/10 overflow-hidden flex items-center justify-center shrink-0">
+                      {t.player_photo_url ? (
+                        <img src={t.player_photo_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="font-display text-xs text-gold/70 uppercase">
+                          {t.player_name.split(' ').map((p) => p[0]).slice(0, 2).join('')}
+                        </span>
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-display text-sm font-bold text-white group-hover:text-gold truncate transition-colors">
+                        {t.player_name}
+                      </div>
+                      <div className="text-[11px] font-body text-gray-400 truncate">
+                        {(t.from_club || 'Free')} → {(t.to_club || 'TBD')}
+                      </div>
+                    </div>
+                  </div>
+                  {t.summary && (
+                    <p className="mt-2 text-[12px] font-body text-gray-400 leading-snug line-clamp-2">{t.summary}</p>
+                  )}
+                  <div className="mt-2 pt-2 border-t border-white/[0.05] flex items-center justify-between gap-2 text-[11px] font-body">
+                    <span className="font-mono text-gold/80 font-semibold">{t.fee || 'Fee TBD'}</span>
+                    {t.source && <span className="text-gray-500 truncate">via {t.source}</span>}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+
+      {openItem && <TransferQuickModal item={openItem} onClose={() => setOpenItem(null)} />}
+    </div>
+  );
+}
+
+// Modal lifted from the previous hub component — kept local to SportSection so
+// the transfers subpage has everything it needs without re-importing the now-
+// retired TransferHub bundle.
+function TransferQuickModal({ item, onClose }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
+    };
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center bg-black/80 backdrop-blur-sm p-0 sm:p-4 overflow-y-auto"
+      onClick={onClose}>
+      <div className="relative w-full sm:max-w-2xl bg-navy border border-white/10 sm:rounded-2xl shadow-2xl shadow-black/60 my-0 sm:my-8 min-h-screen sm:min-h-0"
+        onClick={(e) => e.stopPropagation()}>
+        <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 border-b border-white/10 bg-navy/95 backdrop-blur-xl sm:rounded-t-2xl">
+          <div className="font-display text-[11px] uppercase tracking-[0.18em] text-gold/80">
+            Transfer · {item.category_name}
+          </div>
+          <button type="button" onClick={onClose}
+            className="p-2 rounded-full text-gray-400 hover:text-white hover:bg-white/5">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="px-5 sm:px-8 py-6 space-y-4">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-gold/15 to-emerald/15 border border-white/15 overflow-hidden flex items-center justify-center">
+              {item.player_photo_url ? (
+                <img src={item.player_photo_url} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <span className="font-display text-2xl text-gold/70 uppercase">
+                  {item.player_name.split(' ').map((p) => p[0]).slice(0, 2).join('')}
+                </span>
+              )}
+            </div>
+            <h2 className="font-display text-2xl font-bold text-white text-center">{item.player_name}</h2>
+            <div className="text-sm font-body text-gray-300 text-center">
+              {item.from_club || 'Free agent'} → {item.to_club || 'TBD'}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+            <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] p-3">
+              <div className="font-display text-[9px] uppercase tracking-wider text-gray-500 mb-1">Fee</div>
+              <div className="font-mono text-sm text-gold">{item.fee || '—'}</div>
+            </div>
+            <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] p-3">
+              <div className="font-display text-[9px] uppercase tracking-wider text-gray-500 mb-1">Contract</div>
+              <div className="font-body text-sm text-white">{item.contract_length || '—'}</div>
+            </div>
+            <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] p-3">
+              <div className="font-display text-[9px] uppercase tracking-wider text-gray-500 mb-1">Reliability</div>
+              <div className="font-mono text-sm text-gold">{item.reliability}/5</div>
+            </div>
+            <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] p-3">
+              <div className="font-display text-[9px] uppercase tracking-wider text-gray-500 mb-1">Source</div>
+              <div className="font-body text-sm text-white truncate">{item.source || '—'}</div>
+            </div>
+          </div>
+          {item.summary && <p className="text-sm font-body text-gray-300 leading-relaxed">{item.summary}</p>}
+          {item.body && (
+            <div className="text-[14px] font-body text-gray-300 leading-relaxed whitespace-pre-wrap">{item.body}</div>
+          )}
+          {item.source_url && (
+            <a href={item.source_url} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-gold/80 hover:text-gold text-[12px] font-body">
+              Read the original report →
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function MatchesPanel({ categorySlug, filter, onOpen }) {
   const { matches } = useAppData();
 
@@ -212,7 +425,7 @@ function MatchesPanel({ categorySlug, filter, onOpen }) {
         onClick={() => onOpen(m)}
         className="text-left rounded-xl border border-white/[0.05] bg-navy-100/40 hover:border-gold/20 hover:-translate-y-0.5 transition-all p-4"
       >
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between gap-2 mb-1">
           <span className="font-display text-[10px] font-medium uppercase tracking-[0.15em] text-gray-500 truncate">
             {m.competition}
           </span>
@@ -221,9 +434,14 @@ function MatchesPanel({ categorySlug, filter, onOpen }) {
           ) : isFT ? (
             <span className="font-display text-[10px] font-bold text-gray-400 uppercase tracking-wider">FT</span>
           ) : (
-            <span className="font-mono text-[11px] text-gold/60">{m.kickoff || 'TBD'}</span>
+            <span className="font-mono text-[11px] text-gold/70">{m.kickoff || 'TBD'}</span>
           )}
         </div>
+        {m.kickoff_date && (
+          <div className="mb-2 font-display text-[10px] uppercase tracking-wider text-gold/70">
+            {m.kickoff_date}
+          </div>
+        )}
         <div className="space-y-2">
           {['home', 'away'].map((side) => {
             const t = m[side];
@@ -890,6 +1108,8 @@ export default function SportSection({ categorySlug, sectionSlug, navigate }) {
         return <MatchesPanel categorySlug={categorySlug} filter="fixtures" onOpen={setOpenMatch} />;
       case 'standings':
         return <StandingsTable categorySlug={categorySlug} onOpenMatch={setOpenMatch} />;
+      case 'transfers':
+        return <TransfersPanel categorySlug={categorySlug} />;
       case 'teams':
         return <TeamsGrid categorySlug={categorySlug} onOpenTeam={setOpenTeamSlug} />;
       case 'videos':
@@ -912,7 +1132,7 @@ export default function SportSection({ categorySlug, sectionSlug, navigate }) {
             This page is being written.
           </div>
         );
-      default: // news / transfers / players — story feed
+      default: // news / players — story feed
         return stories.length ? (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {stories.map((s) => <StoryTile key={s.id} story={s} onOpen={setOpenStory} />)}

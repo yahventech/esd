@@ -41,11 +41,18 @@ function FixtureCard({ match, onOpen }) {
       }}
       className="rounded-xl p-4 border border-white/[0.05] bg-navy-100/40 hover:border-gold/20 hover:-translate-y-0.5 transition-all cursor-pointer"
     >
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between gap-2 mb-2">
         <span className="font-display text-[10px] font-medium uppercase tracking-[0.15em] text-gray-500 truncate">
           {match.competition}
         </span>
-        <span className="font-mono text-[11px] text-gold/70 flex items-center gap-1">
+        {match.kickoff_date && (
+          <span className="font-display text-[10px] uppercase tracking-wider text-gold/70 truncate">
+            {match.kickoff_date}
+          </span>
+        )}
+      </div>
+      <div className="flex items-center justify-end mb-3">
+        <span className="font-mono text-[11px] text-gold/80 flex items-center gap-1">
           <Clock size={10} /> {match.kickoff || 'TBD'}
         </span>
       </div>

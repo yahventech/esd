@@ -1,8 +1,8 @@
 // EASD Component — TransferNews (home preview)
 // Compact homepage strip that teases the transfer window: a handful of summary
-// chips per sport, no detail panel. Tapping any chip — or the "View all" CTA
-// at the head of the section — opens the dedicated /transfers hub where the
-// full card view + filters live.
+// cards, no detail panel. Tapping a card jumps to the originating sport's
+// /<slug>/transfers subpage, where the full feed lives alongside scores,
+// fixtures, and the rest of the sport hub.
 
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -116,8 +116,11 @@ export default function TransferNews({ navigate }) {
 
   if (!loading && !items.length) return null;
 
-  const goToHub = (slug) => {
-    navigate?.(slug ? `transfers/${slug}` : 'transfers');
+  // Each card / chip targets its own sport's Transfers subpage. There is no
+  // standalone /transfers route any more — each sport hub owns its feed.
+  const goToSport = (slug) => {
+    if (!slug) return;
+    navigate?.(`${slug}/transfers`);
   };
 
   return (
@@ -138,51 +141,47 @@ export default function TransferNews({ navigate }) {
                 <span className="text-white">Centre</span>
               </h2>
               <p className="text-[12px] font-body text-gray-500 mt-1">
-                The headline beats from the window. Tap any card or jump straight to the hub for the full feed.
+                Headline beats from the window. Tap any card to land on its sport's full transfers page.
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="hidden sm:flex items-center gap-1">
             <button
               type="button"
-              onClick={() => goToHub()}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-gold/40 bg-gold/[0.06] hover:bg-gold/10 hover:border-gold/70 transition-colors font-display text-[11px] uppercase tracking-wider text-gold"
+              onClick={() => scroll(-1)}
+              aria-label="Scroll left"
+              className="p-1.5 rounded-lg border border-white/10 text-gray-400 hover:text-gold hover:border-gold/30 transition-all"
             >
-              View all <ArrowRight size={12} />
+              <ChevronLeft size={16} />
             </button>
-            <div className="hidden sm:flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => scroll(-1)}
-                aria-label="Scroll left"
-                className="p-1.5 rounded-lg border border-white/10 text-gray-400 hover:text-gold hover:border-gold/30 transition-all"
-              >
-                <ChevronLeft size={16} />
-              </button>
-              <button
-                type="button"
-                onClick={() => scroll(1)}
-                aria-label="Scroll right"
-                className="p-1.5 rounded-lg border border-white/10 text-gray-400 hover:text-gold hover:border-gold/30 transition-all"
-              >
-                <ChevronRight size={16} />
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => scroll(1)}
+              aria-label="Scroll right"
+              className="p-1.5 rounded-lg border border-white/10 text-gray-400 hover:text-gold hover:border-gold/30 transition-all"
+            >
+              <ChevronRight size={16} />
+            </button>
           </div>
         </div>
 
         {sportsWithItems.length > 1 && (
           <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            <span className="font-display text-[10px] uppercase tracking-wider text-gray-500 shrink-0 mr-1">
+              Jump to:
+            </span>
             {sportsWithItems.map((c) => (
               <button
                 key={c.slug}
                 type="button"
-                onClick={() => goToHub(c.slug)}
+                onClick={() => goToSport(c.slug)}
                 className="shrink-0 px-3 py-1 rounded-full font-display text-[10px] uppercase tracking-wider border text-gray-400 border-white/10 hover:text-white hover:border-white/30 inline-flex items-center gap-1.5"
+                title={`Open ${c.name} transfers`}
               >
                 {c.icon && <span>{c.icon}</span>}
                 {c.name}
+                <ArrowRight size={10} className="text-gold/60" />
               </button>
             ))}
           </div>
@@ -202,17 +201,9 @@ export default function TransferNews({ navigate }) {
               <SummaryCard
                 key={item.id}
                 item={item}
-                onClickThrough={() => goToHub(item.category_slug)}
+                onClickThrough={() => goToSport(item.category_slug)}
               />
             ))}
-            <button
-              type="button"
-              onClick={() => goToHub()}
-              className="flex-shrink-0 w-[160px] flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-gold/30 hover:border-gold/60 hover:bg-gold/[0.04] transition-colors text-gold font-display text-[11px] uppercase tracking-wider"
-            >
-              <ArrowRight size={20} />
-              View all
-            </button>
           </div>
         )}
       </div>
