@@ -680,10 +680,13 @@ function StandingsTable({ categorySlug, onOpenMatch }) {
 function TeamsGrid({ categorySlug, onOpenTeam }) {
   const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(true);
+  // 'all' or a competition slug — chip bar above the grid drives this.
+  const [competitionFilter, setCompetitionFilter] = useState('all');
 
   useEffect(() => {
     let alive = true;
     setLoading(true);
+    setCompetitionFilter('all');
     api.teams.list(`category__slug=${encodeURIComponent(categorySlug)}`)
       .then((res) => {
         if (!alive) return;
@@ -693,6 +696,44 @@ function TeamsGrid({ categorySlug, onOpenTeam }) {
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, [categorySlug]);
+
+  // Distinct competitions across all teams in this sport — drives the chip bar
+  // and the per-bucket headings below. Order preserved from the team payload
+  // (which is already most-recent-season-first per team via the serializer).
+  const competitions = useMemo(() => {
+    const seen = new Map();
+    for (const t of teams) {
+      for (const c of t.competitions || []) {
+        if (!seen.has(c.slug)) seen.set(c.slug, c);
+      }
+    }
+    return Array.from(seen.values());
+  }, [teams]);
+
+  // Each team is keyed under its FIRST competition (the most recent / primary
+  // league it played in). Teams with no competition data fall into a catch-all
+  // "Unaffiliated" bucket so they're still discoverable from the page.
+  const grouped = useMemo(() => {
+    const buckets = new Map();
+    const orphans = [];
+    for (const t of teams) {
+      const primary = (t.competitions || [])[0];
+      if (!primary) { orphans.push(t); continue; }
+      if (!buckets.has(primary.slug)) {
+        buckets.set(primary.slug, { ...primary, teams: [] });
+      }
+      buckets.get(primary.slug).teams.push(t);
+    }
+    const out = Array.from(buckets.values());
+    if (orphans.length) {
+      out.push({ slug: '__none__', name: 'Unaffiliated', scope: '', teams: orphans });
+    }
+    return out;
+  }, [teams]);
+
+  const visibleGroups = competitionFilter === 'all'
+    ? grouped
+    : grouped.filter((g) => g.slug === competitionFilter);
 
   if (loading) {
     return (
@@ -710,35 +751,90 @@ function TeamsGrid({ categorySlug, onOpenTeam }) {
     );
   }
 
+  const renderCard = (t) => (
+    <button
+      key={t.id}
+      type="button"
+      onClick={() => onOpenTeam(t.slug)}
+      className="group text-left rounded-xl border border-white/[0.05] bg-navy-100/40 hover:border-gold/30 hover:-translate-y-0.5 transition-all p-4 flex items-center gap-3"
+    >
+      <div className="w-12 h-12 shrink-0 rounded-lg bg-white/[0.04] border border-white/10 flex items-center justify-center overflow-hidden">
+        {t.logo_url ? (
+          <img src={t.logo_url} alt="" className="w-full h-full object-contain" />
+        ) : t.flag ? (
+          <span className="text-2xl">{t.flag}</span>
+        ) : (
+          <span className="font-display text-sm text-gold font-bold">
+            {(t.short_name || t.name || '?').slice(0, 3).toUpperCase()}
+          </span>
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="font-display text-sm text-white group-hover:text-gold transition-colors truncate">
+          {t.name}
+        </div>
+        <div className="text-[11px] font-body text-gray-500 truncate">
+          {[t.country, t.stadium].filter(Boolean).join(' · ') || 'View profile'}
+        </div>
+      </div>
+    </button>
+  );
+
   return (
-    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-      {teams.map((t) => (
-        <button
-          key={t.id}
-          type="button"
-          onClick={() => onOpenTeam(t.slug)}
-          className="group text-left rounded-xl border border-white/[0.05] bg-navy-100/40 hover:border-gold/30 hover:-translate-y-0.5 transition-all p-4 flex items-center gap-3"
-        >
-          <div className="w-12 h-12 shrink-0 rounded-lg bg-white/[0.04] border border-white/10 flex items-center justify-center overflow-hidden">
-            {t.logo_url ? (
-              <img src={t.logo_url} alt="" className="w-full h-full object-contain" />
-            ) : t.flag ? (
-              <span className="text-2xl">{t.flag}</span>
-            ) : (
-              <span className="font-display text-sm text-gold font-bold">
-                {(t.short_name || t.name || '?').slice(0, 3).toUpperCase()}
-              </span>
-            )}
+    <div className="space-y-6">
+      {competitions.length > 0 && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+          <button
+            type="button"
+            onClick={() => setCompetitionFilter('all')}
+            className={`shrink-0 px-3 py-1 rounded-full font-display text-[11px] uppercase tracking-wider border transition-all ${
+              competitionFilter === 'all'
+                ? 'bg-gold/10 text-gold border-gold/40'
+                : 'text-gray-400 border-white/10 hover:text-white hover:border-white/30'
+            }`}
+          >
+            All competitions
+            <span className="ml-1.5 text-[10px] text-gray-500 font-mono">{teams.length}</span>
+          </button>
+          {competitions.map((c) => {
+            const count = teams.filter((t) => ((t.competitions || [])[0]?.slug) === c.slug).length;
+            const active = competitionFilter === c.slug;
+            return (
+              <button
+                key={c.slug}
+                type="button"
+                onClick={() => setCompetitionFilter(c.slug)}
+                className={`shrink-0 px-3 py-1 rounded-full font-display text-[11px] uppercase tracking-wider border transition-all inline-flex items-center gap-1.5 ${
+                  active
+                    ? 'bg-gold/10 text-gold border-gold/40'
+                    : 'text-gray-400 border-white/10 hover:text-white hover:border-white/30'
+                }`}
+              >
+                {c.name}
+                {count > 0 && (
+                  <span className="text-[10px] text-gray-500 font-mono">{count}</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {visibleGroups.map((g) => (
+        <div key={g.slug} className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="w-1 h-4 rounded-full bg-gold/60" />
+            <h3 className="font-display text-[12px] sm:text-[13px] font-bold uppercase tracking-[0.15em] text-white">
+              {g.name}
+            </h3>
+            <span className="font-display text-[10px] uppercase tracking-wider text-gray-500">
+              {g.teams.length} {g.teams.length === 1 ? 'team' : 'teams'}
+            </span>
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="font-display text-sm text-white group-hover:text-gold transition-colors truncate">
-              {t.name}
-            </div>
-            <div className="text-[11px] font-body text-gray-500 truncate">
-              {[t.country, t.stadium].filter(Boolean).join(' · ') || 'View profile'}
-            </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {g.teams.map(renderCard)}
           </div>
-        </button>
+        </div>
       ))}
     </div>
   );

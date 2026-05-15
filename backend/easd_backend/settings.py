@@ -94,6 +94,7 @@ INSTALLED_APPS = [
     "apps.newsletter",
     "apps.bookmarks",
     "apps.transfers",
+    "apps.analytics",
     "apps.core",
 ]
 

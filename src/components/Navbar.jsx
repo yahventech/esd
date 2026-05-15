@@ -11,8 +11,9 @@ import StoryReader from './StoryReader';
 
 const moreLinks = [
   { label: 'Live Scores', sectionId: 'live-scores' },
+  { label: 'Fixtures', sectionId: 'fixtures' },
   { label: 'Results', sectionId: 'results' },
-  { label: 'Transfers', sectionId: 'transfers' },
+  { label: 'Transfers', path: 'transfers' },
   { label: 'Explore Sports', sectionId: 'sports' },
   { label: 'Highlights', sectionId: 'highlights' },
   { label: 'Newsletter', sectionId: 'newsletter' },
@@ -188,10 +189,14 @@ export default function Navbar({ navigate, route }) {
     navigate?.(`${cat.slug}/${section.slug}`);
   };
 
-  const handleMoreClick = (sectionId) => {
+  const handleMoreClick = (item) => {
     setMoreOpen(false); setMobileOpen(false);
+    if (item.path) {
+      navigate?.(item.path);
+      return;
+    }
     navigate?.('');
-    setTimeout(() => scrollToSection(sectionId), 0);
+    setTimeout(() => scrollToSection(item.sectionId), 0);
   };
 
   const handleTopLevelRoute = (slug) => {
@@ -213,22 +218,46 @@ export default function Navbar({ navigate, route }) {
   }, [sportsMenuOpen, activeSport, activeCategorySlug, navCategories]);
 
   // Lazy-load the active sport's articles whenever the user lands on a tab
-  // we haven't fetched yet. This keeps the dropdown's Headlines / Featured
-  // panels accurate per-sport instead of relying on a global pool that skews
-  // towards whichever sport has the most placement-tagged stories.
+  // we haven't fetched yet. Two fallback paths run in parallel — the dedicated
+  // category-articles endpoint AND a generic stories filter — because in the
+  // wild some sports surface stories through one and not the other (e.g. when
+  // category linkage exists but pagination on /articles/ misbehaves, or vice
+  // versa). Results are unioned and deduped by id so we always show whatever
+  // is genuinely there for this sport.
   useEffect(() => {
     if (!activeSport) return;
     if (sportArticles[activeSport] !== undefined) return;
     let alive = true;
     setSportArticles((m) => ({ ...m, [activeSport]: null })); // mark in-flight
-    api.categories.articles(activeSport, 5)
-      .then((list) => {
+
+    const fromArticles = api.categories.articles(activeSport, 8)
+      .then((res) => (Array.isArray(res) ? res : (res?.results || [])))
+      .catch(() => []);
+    const fromStories = api.stories.list(`category__slug=${encodeURIComponent(activeSport)}&page_size=8`)
+      .then((res) => (Array.isArray(res) ? res : (res?.results || [])))
+      .catch(() => []);
+
+    Promise.all([fromArticles, fromStories])
+      .then(([a, b]) => {
         if (!alive) return;
-        setSportArticles((m) => ({ ...m, [activeSport]: Array.isArray(list) ? list : [] }));
-      })
-      .catch(() => {
-        if (alive) setSportArticles((m) => ({ ...m, [activeSport]: [] }));
+        const seen = new Set();
+        const merged = [];
+        for (const s of [...a, ...b]) {
+          if (!s || s.id == null) continue;
+          if (seen.has(s.id)) continue;
+          seen.add(s.id);
+          merged.push(s);
+        }
+        // Newest first — articles endpoint already sorts that way, but mixing
+        // sources can scramble the order, so re-sort on the client.
+        merged.sort((x, y) => {
+          const dx = Date.parse(x.published_at || x.created_at || 0) || 0;
+          const dy = Date.parse(y.published_at || y.created_at || 0) || 0;
+          return dy - dx;
+        });
+        setSportArticles((m) => ({ ...m, [activeSport]: merged.slice(0, 8) }));
       });
+
     return () => { alive = false; };
   }, [activeSport, sportArticles]);
 
@@ -579,7 +608,7 @@ export default function Navbar({ navigate, route }) {
                       <button
                         key={item.label}
                         type="button"
-                        onClick={() => handleMoreClick(item.sectionId)}
+                        onClick={() => handleMoreClick(item)}
                         className="w-full text-left px-3 py-2.5 rounded-lg font-display text-[12px] uppercase tracking-wider text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
                       >
                         {item.label}
@@ -825,7 +854,7 @@ export default function Navbar({ navigate, route }) {
                     <button
                       key={item.label}
                       type="button"
-                      onClick={() => handleMoreClick(item.sectionId)}
+                      onClick={() => handleMoreClick(item)}
                       className="block w-full text-left px-6 py-2 font-display text-[12px] uppercase tracking-wider text-gray-400 hover:text-gold hover:bg-white/5"
                     >
                       {item.label}

@@ -2,16 +2,19 @@
 // Assembles all landing page sections in editorial flow order.
 // Heavy admin / detail bundles are lazy-loaded so first-paint stays lean.
 
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
+import { trackPageView, trackEvent } from './lib/tracker';
 import Navbar from './components/Navbar';
 import BreakingNewsTicker from './components/BreakingNewsTicker';
 import Hero from './components/Hero';
 import LiveScores from './components/LiveScores';
 import MatchResults from './components/MatchResults';
+import Fixtures from './components/Fixtures';
 import FeaturedStories from './components/FeaturedStories';
 import SportCategories from './components/SportCategories';
 import VideoHighlights from './components/VideoHighlights';
 import TransferNews from './components/TransferNews';
+import TransferHub from './components/TransferHub';
 import Newsletter from './components/Newsletter';
 import Footer from './components/Footer';
 import AuthModal from './components/AuthModal';
@@ -31,6 +34,14 @@ export default function App() {
   const { user, adminOpen } = useAuth();
   const showAdmin = adminOpen && isStaffRole(user);
 
+  // Fire a page-view beacon on every route change. The tracker is best-effort
+  // and silently swallows errors, so this can never break navigation.
+  useEffect(() => { trackPageView(route); }, [route]);
+
+  // session_start beacon once per browser session — useful for "active
+  // sessions" + funnel charts on the analytics dashboard.
+  useEffect(() => { trackEvent('session_start'); }, []);
+
   return (
     <div className="min-h-screen bg-navy">
       <Navbar route={route} navigate={navigate} />
@@ -41,6 +52,8 @@ export default function App() {
           sectionSlug={route.sectionSlug || ''}
           navigate={navigate}
         />
+      ) : route.type === 'transfers' ? (
+        <TransferHub navigate={navigate} sportSlug={route.sportSlug || null} />
       ) : route.type === 'gossip' ? (
         <StoryListPage
           key={`gossip-${route.sportSlug || 'all'}`}
@@ -79,6 +92,9 @@ export default function App() {
           <div id="live-scores">
             <LiveScores />
           </div>
+          <div id="fixtures">
+            <Fixtures />
+          </div>
           <div id="results">
             <MatchResults />
           </div>
@@ -89,7 +105,7 @@ export default function App() {
             <TrendingStrip />
           </div>
           <div id="transfers">
-            <TransferNews />
+            <TransferNews navigate={navigate} />
           </div>
           <div id="sports">
             <SportCategories />

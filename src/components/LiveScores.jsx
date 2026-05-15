@@ -379,12 +379,15 @@ export default function LiveScores() {
   const [ref, visible] = useScrollAnimation();
   const { matches } = useAppData();
   const [selected, setSelected] = useState(null);
-  const visibleMatches = matches.filter((m) => m.status !== 'FT');
-  const liveCount = visibleMatches.filter((m) => m.status === 'LIVE' || m.status === 'HT').length;
+  // Hero scoreboard: only matches actually unfolding right now. Upcoming
+  // kickoffs are surfaced separately by the Fixtures component so the two
+  // editorial intents (now vs later) don't blur into a single mixed strip.
+  const liveMatches = matches.filter((m) => m.status === 'LIVE' || m.status === 'HT');
+  const liveCount = liveMatches.length;
 
-  if (!visibleMatches.length) return null;
+  if (!liveMatches.length) return null;
 
-  const grouped = groupMatchesByCompetition(visibleMatches);
+  const grouped = groupMatchesByCompetition(liveMatches);
 
   return (
     <section className="relative py-10 sm:py-14 bg-navy">

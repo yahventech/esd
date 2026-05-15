@@ -7,6 +7,7 @@ import { useAppData } from '../context/AppDataContext';
 import { useAuth } from '../context/AuthContext';
 import { useScrollAnimation } from '../hooks/useScrollAnimation';
 import { api } from '../lib/api';
+import { trackEvent } from '../lib/tracker';
 import { getCategoryBadge, getFormatBadge } from '../utils/helpers';
 import StoryReader from './StoryReader';
 
@@ -23,7 +24,11 @@ function StoryCard({ story, size = 'normal', onOpen }) {
     if (!user) { openAuth('login'); return; }
     try {
       const res = await api.stories.bookmarkToggle(story.slug);
-      setSaved(Boolean(res?.bookmarked));
+      const nowSaved = Boolean(res?.bookmarked);
+      setSaved(nowSaved);
+      trackEvent(nowSaved ? 'bookmark' : 'unbookmark', {
+        targetType: 'story', targetId: story.id, targetLabel: story.headline,
+      });
     } catch { /* no-op */ }
   };
 

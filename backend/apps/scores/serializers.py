@@ -40,18 +40,46 @@ class TeamSerializer(serializers.ModelSerializer):
     logo_url = serializers.SerializerMethodField()
     category_slug = serializers.CharField(source="category.slug", read_only=True, default="")
     category_name = serializers.CharField(source="category.name", read_only=True, default="")
+    # The competitions a team has season stats in, surfaced on the team list
+    # so the frontend can group teams by league without a second round trip.
+    competitions = serializers.SerializerMethodField()
 
     class Meta:
         model = Team
         fields = ("id", "slug", "name", "short_name", "flag", "logo", "logo_url",
                   "category", "category_slug", "category_name",
                   "country", "founded", "stadium", "manager", "description",
-                  "primary_color", "website")
-        read_only_fields = ("slug", "logo_url", "category_slug", "category_name")
+                  "primary_color", "website", "competitions")
+        read_only_fields = ("slug", "logo_url", "category_slug", "category_name", "competitions")
         extra_kwargs = {"logo": {"required": False, "allow_null": True}}
 
     def get_logo_url(self, obj):
         return _absolute_image(obj.logo, self.context)
+
+    def get_competitions(self, obj):
+        # Distinct competitions this team has appeared in, ordered by the most
+        # recent season first so the "primary" competition (current league)
+        # naturally sorts to index 0. Used by the frontend to bucket teams in
+        # the sport-hub Teams grid.
+        seen = set()
+        out = []
+        rows = (obj.season_stats
+                  .select_related("competition", "season")
+                  .order_by("-season__start_date", "competition__name"))
+        for row in rows:
+            comp = row.competition
+            if not comp:
+                continue
+            if comp.id in seen:
+                continue
+            seen.add(comp.id)
+            out.append({
+                "id": comp.id,
+                "slug": comp.slug,
+                "name": comp.name,
+                "scope": comp.scope,
+            })
+        return out
 
 
 class PlayerSerializer(serializers.ModelSerializer):

@@ -2,7 +2,7 @@
 // ESPN-inspired immersive hero section. Reads live data from the DRF backend via AppDataContext.
 
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowRight, Play, Clock, MessageSquare, TrendingUp, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowRight, Play, Clock, MessageSquare, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAppData } from '../context/AppDataContext';
 import { getCategoryBadge, getFormatBadge, scrollToSection } from '../utils/helpers';
 import StoryReader from './StoryReader';
@@ -24,7 +24,7 @@ function tagHref(t) {
 }
 
 export default function Hero() {
-  const { hero, featured, trending, loading } = useAppData();
+  const { hero, featured, loading } = useAppData();
   const [openStory, setOpenStory] = useState(null);
   const [slideIdx, setSlideIdx] = useState(0);
 
@@ -112,7 +112,7 @@ export default function Hero() {
 
       <div className="relative z-10 w-full max-w-[1400px] mx-auto px-4 sm:px-6 pb-10 sm:pb-16">
         <div className="grid lg:grid-cols-12 gap-6 lg:gap-10 items-end">
-          <div className="lg:col-span-8 space-y-5">
+          <div className="lg:col-span-10 xl:col-span-9 space-y-5">
             <div className="flex items-center gap-3 animate-fade-in" style={{ animationDelay: '0.1s', animationFillMode: 'both' }} key={`badges-${current.slug}`}>
               <span className={`${badge.bg} px-2.5 py-0.5 font-display text-[11px] font-semibold uppercase tracking-[0.15em] text-white rounded`}>
                 {current.category}
@@ -204,52 +204,9 @@ export default function Hero() {
             </div>
           </div>
 
-          {/* Right column — trending widget only. The persistent match card
-              that used to sit here was removed at editorial direction; live
-              scores and results live in their dedicated strips below the hero. */}
-          <div className="lg:col-span-4 space-y-4">
-            <div
-              className="hidden lg:block rounded-xl bg-navy-100/60 backdrop-blur-sm border border-white/[0.06] p-4 animate-fade-in"
-              style={{ animationDelay: '0.5s', animationFillMode: 'both' }}
-            >
-              <div className="flex items-center gap-2 mb-3">
-                <TrendingUp size={14} className="text-gold" />
-                <span className="font-display text-[11px] font-semibold uppercase tracking-[0.15em] text-gold">
-                  Trending Now
-                </span>
-              </div>
-              <div className="space-y-2">
-                {trending.map((t, i) => {
-                  const label = (t.tag || '').replace(/^#+/, '');
-                  // Prefer the server's canonical slug; fall back to a local
-                  // slugify only when the server hasn't provided one yet.
-                  const slug = (t.slug && t.slug.length)
-                    ? t.slug
-                    : label.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-                  // Skip topics that collapse to an empty slug after
-                  // normalisation — otherwise the link points at `/tag/` and
-                  // silently falls back to the home view (the original "click
-                  // goes to hero" symptom).
-                  if (!slug) return null;
-                  return (
-                    <a
-                      key={t.tag}
-                      href={`/tag/${encodeURIComponent(slug)}`}
-                      className="w-full flex items-center justify-between group text-left"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <span className="font-mono text-[11px] text-gray-600 w-4">{i + 1}</span>
-                        <span className="text-[13px] font-body font-medium text-gray-300 group-hover:text-gold transition-colors truncate">
-                          <span className="text-gold/60 mr-0.5">#</span>{label}
-                        </span>
-                      </div>
-                      <span className="text-[11px] text-gray-600 font-body shrink-0 ml-2">{t.count} posts</span>
-                    </a>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
+          {/* The desktop hero used to host a Trending Now widget here; the
+              dedicated TrendingStrip below the fold now carries that load, so
+              the hero stays a clean editorial canvas. */}
         </div>
 
         {/* Slide controls — only when there's more than one slide. */}

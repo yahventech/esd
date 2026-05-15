@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useAppData } from '../context/AppDataContext';
 import { useScrollAnimation } from '../hooks/useScrollAnimation';
 import { api } from '../lib/api';
+import { trackEvent } from '../lib/tracker';
 import { getCategoryBadge } from '../utils/helpers';
 
 export default function VideoHighlights() {
@@ -23,6 +24,7 @@ export default function VideoHighlights() {
   if (!videos.length) return null;
 
   const onPlay = async (video) => {
+    trackEvent('video_play', { targetType: 'video', targetId: video.id, targetLabel: video.title });
     try {
       const res = await api.videos.play(video.slug);
       setLocal((m) => ({ ...m, [video.slug]: res }));

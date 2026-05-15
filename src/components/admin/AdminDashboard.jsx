@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import {
   FileText, Video as VideoIcon, Flag, Zap, TrendingUp,
   Layers, Shield, UserCog, X, LogOut, Compass,
-  Users as UsersIcon, BarChart3, ArrowRightLeft,
+  Users as UsersIcon, BarChart3, ArrowRightLeft, Activity,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAppData } from '../../context/AppDataContext';
@@ -16,6 +16,7 @@ import MatchesManager from './MatchesManager';
 import BreakingNewsManager from './BreakingNewsManager';
 import TrendingManager from './TrendingManager';
 import TransfersManager from './TransfersManager';
+import AnalyticsManager from './AnalyticsManager';
 import CategoriesManager from './CategoriesManager';
 import SectionsManager from './SectionsManager';
 import TeamsManager from './TeamsManager';
@@ -24,6 +25,7 @@ import StatsManager from './StatsManager';
 import UsersManager from './UsersManager';
 
 const TABS = [
+  { id: 'analytics',  label: 'Analytics',  icon: Activity,   roles: ['editor', 'admin'] },
   { id: 'stories',    label: 'Stories',    icon: FileText,   roles: ['author', 'editor', 'admin'] },
   { id: 'videos',     label: 'Videos',     icon: VideoIcon,  roles: ['editor', 'admin'] },
   { id: 'matches',    label: 'Matches',    icon: Flag,       roles: ['editor', 'admin'] },
@@ -62,6 +64,7 @@ export default function AdminDashboard() {
 
   const renderTab = () => {
     switch (tab) {
+      case 'analytics':  return <AnalyticsManager {...managerProps} />;
       case 'stories':    return <StoriesManager {...managerProps} />;
       case 'videos':     return <VideosManager {...managerProps} />;
       case 'matches':    return <MatchesManager {...managerProps} />;

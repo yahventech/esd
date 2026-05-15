@@ -289,6 +289,17 @@ export const api = {
     detail: (slug) => request(`/api/transfers/${slug}/`),
   },
 
+  analytics: {
+    track:    (body) => request('/api/analytics/track/', { method: 'POST', body }),
+    summary:  (days = 30) => request(`/api/analytics/summary/?days=${days}`, { auth: true }),
+    traffic:  (days = 30) => request(`/api/analytics/traffic/?days=${days}`, { auth: true }),
+    hourly:   () => request('/api/analytics/hourly/', { auth: true }),
+    content:  (days = 30) => request(`/api/analytics/content/?days=${days}`, { auth: true }),
+    devices:  (days = 30) => request(`/api/analytics/devices/?days=${days}`, { auth: true }),
+    realtime: () => request('/api/analytics/realtime/', { auth: true }),
+    engagement: (days = 30) => request(`/api/analytics/engagement/?days=${days}`, { auth: true }),
+  },
+
   newsletter: {
     subscribe: (email, extra = {}) =>
       request('/api/newsletter/subscribe/', {
