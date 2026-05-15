@@ -178,6 +178,19 @@ function MatchesPanel({ categorySlug, filter, onOpen }) {
     return catMatch.length ? catMatch : keyed;
   }, [matches, filter, categorySlug]);
 
+  // Bucket matches under each competition so fans see "Premier League · 4 results"
+  // followed by its own block, rather than a flat shuffle across leagues.
+  const grouped = useMemo(() => {
+    const order = [];
+    const buckets = {};
+    for (const m of slice) {
+      const key = (m.competition || '').trim() || 'Other';
+      if (!(key in buckets)) { buckets[key] = []; order.push(key); }
+      buckets[key].push(m);
+    }
+    return order.map((name) => ({ name, matches: buckets[name] }));
+  }, [slice]);
+
   if (!slice.length) {
     return (
       <div className="rounded-xl border border-white/[0.05] bg-navy-100/30 p-10 text-center text-gray-500 font-body text-sm">
@@ -186,50 +199,67 @@ function MatchesPanel({ categorySlug, filter, onOpen }) {
     );
   }
 
+  const renderCard = (m) => {
+    const isLive = m.status === 'LIVE' || m.status === 'HT';
+    const isFT = m.status === 'FT';
+    const home = m.home.score ?? 0;
+    const away = m.away.score ?? 0;
+    const homeWin = home > away, awayWin = away > home;
+    return (
+      <button
+        key={m.id}
+        type="button"
+        onClick={() => onOpen(m)}
+        className="text-left rounded-xl border border-white/[0.05] bg-navy-100/40 hover:border-gold/20 hover:-translate-y-0.5 transition-all p-4"
+      >
+        <div className="flex items-center justify-between mb-3">
+          <span className="font-display text-[10px] font-medium uppercase tracking-[0.15em] text-gray-500 truncate">
+            {m.competition}
+          </span>
+          {isLive ? (
+            <span className="font-mono text-[11px] font-bold text-emerald tracking-wider">{m.minute || 'LIVE'}</span>
+          ) : isFT ? (
+            <span className="font-display text-[10px] font-bold text-gray-400 uppercase tracking-wider">FT</span>
+          ) : (
+            <span className="font-mono text-[11px] text-gold/60">{m.kickoff || 'TBD'}</span>
+          )}
+        </div>
+        <div className="space-y-2">
+          {['home', 'away'].map((side) => {
+            const t = m[side];
+            const isWinner = side === 'home' ? homeWin : awayWin;
+            return (
+              <div key={side} className="flex items-center justify-between">
+                <span className={`font-body text-sm truncate ${isWinner ? 'text-white' : 'text-gray-400'}`}>{t.name}</span>
+                <span className={`font-display text-xl font-bold tabular-nums ${isWinner ? 'text-gold' : 'text-gray-500'}`}>
+                  {t.score ?? (isFT ? 0 : '-')}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </button>
+    );
+  };
+
   return (
-    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-      {slice.map((m) => {
-        const isLive = m.status === 'LIVE' || m.status === 'HT';
-        const isFT = m.status === 'FT';
-        const home = m.home.score ?? 0;
-        const away = m.away.score ?? 0;
-        const homeWin = home > away, awayWin = away > home;
-        return (
-          <button
-            key={m.id}
-            type="button"
-            onClick={() => onOpen(m)}
-            className="text-left rounded-xl border border-white/[0.05] bg-navy-100/40 hover:border-gold/20 hover:-translate-y-0.5 transition-all p-4"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <span className="font-display text-[10px] font-medium uppercase tracking-[0.15em] text-gray-500 truncate">
-                {m.competition}
-              </span>
-              {isLive ? (
-                <span className="font-mono text-[11px] font-bold text-emerald tracking-wider">{m.minute || 'LIVE'}</span>
-              ) : isFT ? (
-                <span className="font-display text-[10px] font-bold text-gray-400 uppercase tracking-wider">FT</span>
-              ) : (
-                <span className="font-mono text-[11px] text-gold/60">{m.kickoff || 'TBD'}</span>
-              )}
-            </div>
-            <div className="space-y-2">
-              {['home', 'away'].map((side) => {
-                const t = m[side];
-                const isWinner = side === 'home' ? homeWin : awayWin;
-                return (
-                  <div key={side} className="flex items-center justify-between">
-                    <span className={`font-body text-sm truncate ${isWinner ? 'text-white' : 'text-gray-400'}`}>{t.name}</span>
-                    <span className={`font-display text-xl font-bold tabular-nums ${isWinner ? 'text-gold' : 'text-gray-500'}`}>
-                      {t.score ?? (isFT ? 0 : '-')}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </button>
-        );
-      })}
+    <div className="space-y-6">
+      {grouped.map((g) => (
+        <div key={g.name} className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="w-1 h-4 rounded-full bg-gold/60" />
+            <h3 className="font-display text-[12px] sm:text-[13px] font-bold uppercase tracking-[0.15em] text-white">
+              {g.name}
+            </h3>
+            <span className="font-display text-[10px] uppercase tracking-wider text-gray-500">
+              {g.matches.length} {g.matches.length === 1 ? 'match' : 'matches'}
+            </span>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {g.matches.map(renderCard)}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

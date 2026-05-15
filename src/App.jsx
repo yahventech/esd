@@ -11,6 +11,7 @@ import MatchResults from './components/MatchResults';
 import FeaturedStories from './components/FeaturedStories';
 import SportCategories from './components/SportCategories';
 import VideoHighlights from './components/VideoHighlights';
+import TransferNews from './components/TransferNews';
 import Newsletter from './components/Newsletter';
 import Footer from './components/Footer';
 import AuthModal from './components/AuthModal';
@@ -86,6 +87,9 @@ export default function App() {
           </div>
           <div id="trending">
             <TrendingStrip />
+          </div>
+          <div id="transfers">
+            <TransferNews />
           </div>
           <div id="sports">
             <SportCategories />

@@ -1,7 +1,7 @@
 // EASD Admin — Videos manager.
 
-import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, Video as VideoIcon, Eye } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Plus, Pencil, Trash2, Video as VideoIcon, Eye, Upload, X as XIcon } from 'lucide-react';
 import { api } from '../../lib/api';
 import { useAppData } from '../../context/AppDataContext';
 import {
@@ -37,6 +37,10 @@ function VideoForm({ editing, onSaved, onCancel, showToast }) {
   const [form, setField, setForm] = useFormState(blank);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [thumbFile, setThumbFile] = useState(null);
+  const [thumbPreview, setThumbPreview] = useState('');
+  const [clearThumb, setClearThumb] = useState(false);
+  const fileRef = useRef(null);
   const isEdit = Boolean(editing?.slug);
 
   useEffect(() => {
@@ -52,17 +56,63 @@ function VideoForm({ editing, onSaved, onCancel, showToast }) {
       view_count: editing.view_count ?? 0,
       tag_names: Array.isArray(editing.tags) ? editing.tags.map((t) => t.name || t) : [],
     } : blank);
+    setThumbFile(null);
+    setThumbPreview(editing?.thumbnail || '');
+    setClearThumb(false);
   }, [editing]);
+
+  const pickThumb = (file) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { setError('Thumbnail must be an image.'); return; }
+    if (file.size > 4 * 1024 * 1024) { setError('Thumbnail must be under 4 MB.'); return; }
+    setError('');
+    setThumbFile(file);
+    setThumbPreview(URL.createObjectURL(file));
+    setClearThumb(false);
+  };
+
+  const clearThumbNow = () => {
+    setThumbFile(null);
+    setThumbPreview('');
+    setClearThumb(true);
+    if (fileRef.current) fileRef.current.value = '';
+  };
 
   const submit = async (e) => {
     e.preventDefault();
     setError(''); setSaving(true);
-    const payload = {
-      ...form,
+    const base = {
+      title: form.title,
+      description: form.description,
+      duration: form.duration,
+      video_url: form.video_url,
+      category: form.category,
       sport_category: form.sport_category ? Number(form.sport_category) : null,
+      gradient: form.gradient,
+      is_featured: form.is_featured,
       view_count: Number(form.view_count) || 0,
       tag_names: Array.isArray(form.tag_names) ? form.tag_names : [],
     };
+    let payload;
+    if (thumbFile || clearThumb) {
+      const fd = new FormData();
+      Object.entries(base).forEach(([k, v]) => {
+        if (k === 'tag_names') {
+          (v || []).forEach((t) => fd.append('tag_names', t));
+        } else if (typeof v === 'boolean') {
+          fd.append(k, v ? 'true' : 'false');
+        } else if (v == null) {
+          fd.append(k, '');
+        } else {
+          fd.append(k, String(v));
+        }
+      });
+      if (thumbFile) fd.append('thumbnail', thumbFile);
+      else if (clearThumb) fd.append('thumbnail', '');
+      payload = fd;
+    } else {
+      payload = base;
+    }
     try {
       if (isEdit) {
         await api.admin.videos.update(editing.slug, payload);
@@ -103,6 +153,35 @@ function VideoForm({ editing, onSaved, onCancel, showToast }) {
               ...categories.map((c) => ({ value: c.id, label: `${c.icon} ${c.name}` }))]} />
         </Field>
       </div>
+
+      <Field label="Thumbnail" hint="Optional cover image — 16:9 jpg/png. Falls back to the gradient when blank.">
+        <div className="flex items-center gap-3">
+          <div className="w-32 h-20 rounded-lg border border-white/10 bg-white/[0.02] overflow-hidden flex items-center justify-center">
+            {thumbPreview ? (
+              <img src={thumbPreview} alt="thumbnail" className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-gray-600 text-[11px] font-body">No thumbnail</span>
+            )}
+          </div>
+          <div className="flex-1 flex items-center gap-2">
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => pickThumb(e.target.files?.[0])}
+            />
+            <Button type="button" variant="ghost" onClick={() => fileRef.current?.click()}>
+              <Upload size={13} /> {thumbPreview ? 'Replace' : 'Upload'}
+            </Button>
+            {thumbPreview && (
+              <Button type="button" variant="ghost" onClick={clearThumbNow}>
+                <XIcon size={13} /> Remove
+              </Button>
+            )}
+          </div>
+        </div>
+      </Field>
 
       <Field label="Gradient">
         <div className="grid grid-cols-2 gap-2">
@@ -218,8 +297,11 @@ export default function VideosManager({ showToast, onDataChanged }) {
                   ariaLabel={`Select ${v.title}`}
                 />
               </div>
-              <div className={`h-28 bg-gradient-to-br ${v.gradient || 'from-navy-200 via-navy-100 to-charcoal'} relative`}>
-                {v.is_featured && <span className="absolute top-2 right-2 px-2 py-0.5 rounded bg-gold/20 text-gold font-display text-[10px] uppercase tracking-wider">Featured</span>}
+              <div className={`h-28 bg-gradient-to-br ${v.gradient || 'from-navy-200 via-navy-100 to-charcoal'} relative overflow-hidden`}>
+                {v.thumbnail && (
+                  <img src={v.thumbnail} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                )}
+                {v.is_featured && <span className="absolute top-2 right-2 z-10 px-2 py-0.5 rounded bg-gold/20 text-gold font-display text-[10px] uppercase tracking-wider">Featured</span>}
                 <span className="absolute bottom-2 left-2 text-white font-mono text-[11px] bg-black/60 px-1.5 py-0.5 rounded">{v.duration || '—'}</span>
                 <span className="absolute bottom-2 right-2 text-gray-300 font-body text-[11px] flex items-center gap-1"><Eye size={11} />{v.views || v.view_count}</span>
               </div>

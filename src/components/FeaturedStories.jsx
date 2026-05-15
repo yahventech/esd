@@ -42,24 +42,21 @@ function StoryCard({ story, size = 'normal', onOpen }) {
       }}
     >
       <div
-        className={`relative flex-shrink-0 bg-gradient-to-br ${
+        className={`relative flex-shrink-0 overflow-hidden bg-gradient-to-br ${
           story.gradient || 'from-navy-200 via-navy-100 to-charcoal'
-        }`}
+        } ${isLarge ? 'aspect-[16/10]' : 'aspect-[16/9]'}`}
       >
         {story.coverImage ? (
           <img
             src={story.coverImage}
             alt=""
-            // Pure natural aspect — width fills the card, height is whatever
-            // the image's own ratio dictates. No height cap and no object-fit
-            // means there is never a letterbox or pillarbox gap to read as a
-            // crop, regardless of the editor's source aspect ratio.
-            className="block w-full h-auto"
+            // Fixed aspect ratio + object-cover so every card matches its
+            // siblings. Editors can upload any source ratio without breaking
+            // the homepage grid alignment.
+            className="absolute inset-0 w-full h-full object-cover"
             loading="lazy"
           />
-        ) : (
-          <div className={`w-full ${isLarge ? 'h-56 sm:h-64' : 'h-40'}`} />
-        )}
+        ) : null}
         <div className="absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-black/40 to-transparent pointer-events-none" />
         <div className="absolute top-3 left-3 flex items-center gap-1.5">
           <span className={`${badge.bg} px-2 py-0.5 font-display text-[10px] font-semibold uppercase tracking-[0.15em] text-white rounded`}>
@@ -296,7 +293,7 @@ export default function FeaturedStories() {
               No stories in {(categories.find((c) => c.slug === categoryFilter)?.name) || 'this sport'} yet.
             </p>
           ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {filteredStories.map((s) => (
                 <StoryCard key={s.id} story={s} onOpen={setOpen} />
               ))}
@@ -307,28 +304,30 @@ export default function FeaturedStories() {
         {/* All-stories grid + curated sidebar — only when no sport filter is active. */}
         {!categoryFilter && (
         <div className="grid lg:grid-cols-12 gap-5">
-          <div className="lg:col-span-8">
+          <div className="lg:col-span-9">
             {allLoading ? (
               <div className="py-12 flex justify-center"><Loader2 size={20} className="text-gold animate-spin" /></div>
             ) : allStories.length === 0 ? (
               <p className="py-10 text-center text-gray-500 font-body italic">No stories published yet.</p>
             ) : (
-              <div className="grid sm:grid-cols-2 gap-4 items-start">
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {allStories.map((story, i) => (
-                  // Promote the most recent story to the large card so the grid still
-                  // has an editorial focal point.
-                  <StoryCard
-                    key={story.id}
-                    story={story}
-                    size={i === 0 ? 'large' : 'normal'}
-                    onOpen={setOpen}
-                  />
+                  // Promote the most recent story to the large card spanning two
+                  // columns so the grid keeps an editorial focal point without
+                  // the cards growing unevenly tall.
+                  <div key={story.id} className={i === 0 ? 'sm:col-span-2' : ''}>
+                    <StoryCard
+                      story={story}
+                      size={i === 0 ? 'large' : 'normal'}
+                      onOpen={setOpen}
+                    />
+                  </div>
                 ))}
               </div>
             )}
           </div>
 
-          <div className={`${allStories.length > 0 ? 'lg:col-span-4' : 'lg:col-span-12'} space-y-6`}>
+          <div className={`${allStories.length > 0 ? 'lg:col-span-3' : 'lg:col-span-12'} space-y-6`}>
             {top.length > 0 && (
             <div className="hidden md:block rounded-xl bg-navy-100/50 border border-white/[0.05] p-4">
               <h3 className="font-display text-[13px] font-semibold uppercase tracking-[0.12em] text-gold mb-3 flex items-center gap-2">

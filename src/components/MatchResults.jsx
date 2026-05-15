@@ -83,6 +83,19 @@ export default function MatchResults() {
   const results = matches.filter((m) => m.status === 'FT');
   if (!results.length) return null;
 
+  // Group finals by competition so the page reads like a digest of "X round
+  // results" instead of a flat wall of cards.
+  const groupedResults = (() => {
+    const order = [];
+    const buckets = {};
+    for (const m of results) {
+      const key = (m.competition || '').trim() || 'Other Results';
+      if (!(key in buckets)) { buckets[key] = []; order.push(key); }
+      buckets[key].push(m);
+    }
+    return order.map((name) => ({ name, matches: buckets[name] }));
+  })();
+
   // Collapsed dropdown shows a small teaser row of results behind a heavy fade;
   // expanding reveals the full grid at full opacity.
   const PEEK_COUNT = 3;
@@ -123,10 +136,27 @@ export default function MatchResults() {
         </button>
 
         {open ? (
-          // Expanded — full grid, full opacity.
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {results.map((m) => (
-              <ResultCard key={m.id} match={m} onOpen={setSelected} />
+          // Expanded — full grid, full opacity. Each competition gets its own
+          // labelled block so editors and fans can scan the relevant rounds
+          // without hunting through a mixed list.
+          <div className="space-y-6">
+            {groupedResults.map((g) => (
+              <div key={g.name} className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-1 h-4 rounded-full bg-gold/60" />
+                  <h3 className="font-display text-[12px] sm:text-[13px] font-bold uppercase tracking-[0.15em] text-white">
+                    {g.name}
+                  </h3>
+                  <span className="font-display text-[10px] uppercase tracking-wider text-gray-500">
+                    {g.matches.length} {g.matches.length === 1 ? 'result' : 'results'}
+                  </span>
+                </div>
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {g.matches.map((m) => (
+                    <ResultCard key={m.id} match={m} onOpen={setSelected} />
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         ) : (

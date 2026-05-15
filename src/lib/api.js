@@ -283,6 +283,12 @@ export const api = {
     play: (slug) => request(`/api/videos/${slug}/play/`, { method: 'POST' }),
   },
 
+  transfers: {
+    list: (params = '') => request(`/api/transfers/${params ? `?${params}` : ''}`),
+    featured: () => request('/api/transfers/featured/'),
+    detail: (slug) => request(`/api/transfers/${slug}/`),
+  },
+
   newsletter: {
     subscribe: (email, extra = {}) =>
       request('/api/newsletter/subscribe/', {
@@ -417,6 +423,15 @@ export const api = {
       create: (payload) => request('/api/categories/sections/', { method: 'POST', auth: true, body: payload }),
       update: (id, payload) => request(`/api/categories/sections/${id}/`, { method: 'PATCH', auth: true, body: payload }),
       remove: (id) => request(`/api/categories/sections/${id}/`, { method: 'DELETE', auth: true }),
+    },
+    transfers: {
+      // Editors hit the same routes as the public list; the queryset on the
+      // backend will include drafts once an editor JWT is attached.
+      list:   (params = '') => request(`/api/transfers/${params ? `?${params}` : ''}`, { auth: true }),
+      detail: (slug) => request(`/api/transfers/${slug}/`, { auth: true }),
+      create: (payload) => request('/api/transfers/', { method: 'POST', auth: true, body: payload }),
+      update: (slug, payload) => request(`/api/transfers/${slug}/`, { method: 'PATCH', auth: true, body: payload }),
+      remove: (slug) => request(`/api/transfers/${slug}/`, { method: 'DELETE', auth: true }),
     },
     users: {
       list:   () => request('/api/auth/users/', { auth: true }),

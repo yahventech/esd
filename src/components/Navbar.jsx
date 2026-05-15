@@ -12,6 +12,7 @@ import StoryReader from './StoryReader';
 const moreLinks = [
   { label: 'Live Scores', sectionId: 'live-scores' },
   { label: 'Results', sectionId: 'results' },
+  { label: 'Transfers', sectionId: 'transfers' },
   { label: 'Explore Sports', sectionId: 'sports' },
   { label: 'Highlights', sectionId: 'highlights' },
   { label: 'Newsletter', sectionId: 'newsletter' },
@@ -86,7 +87,10 @@ export default function Navbar({ navigate, route }) {
   };
 
   // Bucket all visible stories by their category slug so each mega-menu can
-  // show a featured card + a "Latest" headline list for its own category.
+  // show a featured card + a "Latest" headline list for its own category. The
+  // pool is keyed by both slug AND lowercased name because curated lists
+  // sometimes echo back only the display name. This is the global fallback —
+  // each sport also lazy-fetches its own article list below.
   const storiesByCategory = useMemo(() => {
     const pool = [...(featured || []), ...(top || []), ...(editorsPicks || [])];
     const map = {};
@@ -94,12 +98,19 @@ export default function Navbar({ navigate, route }) {
     for (const s of pool) {
       if (seen.has(s.id)) continue;
       seen.add(s.id);
-      const key = (s.categorySlug || (s.category || '').toLowerCase());
-      if (!key) continue;
-      (map[key] = map[key] || []).push(s);
+      const slug = (s.categorySlug || '').toLowerCase();
+      const nameKey = (s.category || '').toLowerCase();
+      if (slug) (map[slug] = map[slug] || []).push(s);
+      if (nameKey && nameKey !== slug) (map[nameKey] = map[nameKey] || []).push(s);
     }
     return map;
   }, [featured, top, editorsPicks]);
+
+  // Per-sport article cache. Keyed by slug → array. The mega-menu fetches the
+  // active sport's actual articles via /api/categories/<slug>/articles/ so the
+  // Headlines and Featured panels reflect the real feed for that sport,
+  // independent of which sports happened to get placement-curated globally.
+  const [sportArticles, setSportArticles] = useState({});
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 20);
@@ -201,6 +212,26 @@ export default function Navbar({ navigate, route }) {
     if (fallback) setActiveSport(fallback);
   }, [sportsMenuOpen, activeSport, activeCategorySlug, navCategories]);
 
+  // Lazy-load the active sport's articles whenever the user lands on a tab
+  // we haven't fetched yet. This keeps the dropdown's Headlines / Featured
+  // panels accurate per-sport instead of relying on a global pool that skews
+  // towards whichever sport has the most placement-tagged stories.
+  useEffect(() => {
+    if (!activeSport) return;
+    if (sportArticles[activeSport] !== undefined) return;
+    let alive = true;
+    setSportArticles((m) => ({ ...m, [activeSport]: null })); // mark in-flight
+    api.categories.articles(activeSport, 5)
+      .then((list) => {
+        if (!alive) return;
+        setSportArticles((m) => ({ ...m, [activeSport]: Array.isArray(list) ? list : [] }));
+      })
+      .catch(() => {
+        if (alive) setSportArticles((m) => ({ ...m, [activeSport]: [] }));
+      });
+    return () => { alive = false; };
+  }, [activeSport, sportArticles]);
+
   return (
     <>
       <nav
@@ -279,9 +310,17 @@ export default function Navbar({ navigate, route }) {
                           // what's been published, nothing more.
                           const adminSections = Array.isArray(cat.sections) ? cat.sections : [];
                           const groups = groupByScope(adminSections);
-                          const catStories = storiesByCategory[cat.slug]
+                          // Prefer the per-sport API fetch — it returns the most
+                          // recent published stories for *this* sport. Fall back
+                          // to the global placement pool if the fetch hasn't
+                          // resolved yet (or returned nothing).
+                          const fetched = sportArticles[cat.slug];
+                          const fetchedReady = Array.isArray(fetched) && fetched.length > 0;
+                          const fallback = storiesByCategory[cat.slug]
                             || storiesByCategory[(cat.name || '').toLowerCase()]
                             || [];
+                          const catStories = fetchedReady ? fetched : fallback;
+                          const isLoadingCat = fetched === null && fallback.length === 0;
                           const hero = catStories[0];
                           const latest = catStories.slice(1, 4);
 
@@ -406,7 +445,11 @@ export default function Navbar({ navigate, route }) {
                                     <div className="font-display text-[10px] font-bold uppercase tracking-[0.18em] text-gold/80 mb-3">
                                       {cat.name} headlines
                                     </div>
-                                    {latest.length > 0 ? (
+                                    {isLoadingCat ? (
+                                      <div className="flex items-center justify-center py-6">
+                                        <Loader2 size={16} className="animate-spin text-gold/60" />
+                                      </div>
+                                    ) : latest.length > 0 ? (
                                       <ul className="space-y-2.5">
                                         {[hero, ...latest].filter(Boolean).slice(0, 5).map((s) => (
                                           <li key={s.id}>

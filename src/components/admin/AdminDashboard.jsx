@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import {
   FileText, Video as VideoIcon, Flag, Zap, TrendingUp,
   Layers, Shield, UserCog, X, LogOut, Compass,
-  Users as UsersIcon, BarChart3,
+  Users as UsersIcon, BarChart3, ArrowRightLeft,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAppData } from '../../context/AppDataContext';
@@ -15,6 +15,7 @@ import VideosManager from './VideosManager';
 import MatchesManager from './MatchesManager';
 import BreakingNewsManager from './BreakingNewsManager';
 import TrendingManager from './TrendingManager';
+import TransfersManager from './TransfersManager';
 import CategoriesManager from './CategoriesManager';
 import SectionsManager from './SectionsManager';
 import TeamsManager from './TeamsManager';
@@ -30,6 +31,7 @@ const TABS = [
   { id: 'players',    label: 'Players',    icon: UsersIcon,  roles: ['editor', 'admin'] },
   { id: 'stats',      label: 'Stats',      icon: BarChart3,  roles: ['editor', 'admin'] },
   { id: 'breaking',   label: 'Breaking',   icon: Zap,        roles: ['editor', 'admin'] },
+  { id: 'transfers',  label: 'Transfers',  icon: ArrowRightLeft, roles: ['editor', 'admin'] },
   { id: 'trending',   label: 'Trending',   icon: TrendingUp, roles: ['editor', 'admin'] },
   { id: 'categories', label: 'Categories', icon: Layers,     roles: ['editor', 'admin'] },
   { id: 'sections',   label: 'Sub-pages',  icon: Compass,    roles: ['editor', 'admin'] },
@@ -67,6 +69,7 @@ export default function AdminDashboard() {
       case 'players':    return <PlayersManager {...managerProps} />;
       case 'stats':      return <StatsManager {...managerProps} />;
       case 'breaking':   return <BreakingNewsManager {...managerProps} />;
+      case 'transfers':  return <TransfersManager {...managerProps} />;
       case 'trending':   return <TrendingManager {...managerProps} />;
       case 'categories': return <CategoriesManager {...managerProps} />;
       case 'sections':   return <SectionsManager {...managerProps} />;

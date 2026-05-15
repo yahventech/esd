@@ -65,8 +65,16 @@ export default function VideoHighlights() {
                   }
                 }}
               >
-                <div className={`relative h-44 sm:h-48 bg-gradient-to-br ${video.gradient || 'from-navy-200 via-navy-100 to-charcoal'}`}>
-                  <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors pointer-events-none" />
+                <div className={`relative h-44 sm:h-48 overflow-hidden bg-gradient-to-br ${video.gradient || 'from-navy-200 via-navy-100 to-charcoal'}`}>
+                  {video.thumbnail && (
+                    <img
+                      src={video.thumbnail}
+                      alt=""
+                      loading="lazy"
+                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                  )}
+                  <div className="absolute inset-0 bg-black/30 group-hover:bg-black/50 transition-colors pointer-events-none" />
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div className="w-14 h-14 rounded-full flex items-center justify-center bg-gradient-to-br from-gold to-yellow-500 shadow-lg shadow-gold/30 transition-all duration-300 group-hover:scale-110 group-hover:shadow-gold/50">
                       <Play size={22} fill="#0A1628" color="#0A1628" className="ml-0.5" />

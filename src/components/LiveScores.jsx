@@ -299,9 +299,84 @@ function EventRow({ event }) {
   );
 }
 
+// Group a list of matches by their competition label, preserving the original
+// ordering inside each group. Empty/unknown competition names fall into an
+// "Other" bucket so the section is never silently dropped.
+function groupMatchesByCompetition(rows) {
+  const order = [];
+  const buckets = {};
+  for (const m of rows) {
+    const key = (m.competition || '').trim() || 'Other Fixtures';
+    if (!(key in buckets)) { buckets[key] = []; order.push(key); }
+    buckets[key].push(m);
+  }
+  return order.map((name) => ({ name, matches: buckets[name] }));
+}
+
+function CompetitionStrip({ name, matches, onOpen }) {
+  const scrollRef = useRef(null);
+  const liveCount = matches.filter((m) => m.status === 'LIVE' || m.status === 'HT').length;
+  const scroll = (dir) => {
+    if (!scrollRef.current) return;
+    scrollRef.current.scrollBy({ left: dir * 300, behavior: 'smooth' });
+  };
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="w-1 h-4 rounded-full bg-gold/60 shrink-0" />
+          <h3 className="font-display text-[12px] sm:text-[13px] font-bold uppercase tracking-[0.15em] text-white truncate">
+            {name}
+          </h3>
+          <span className="font-display text-[10px] uppercase tracking-wider text-gray-500 shrink-0">
+            {matches.length} {matches.length === 1 ? 'match' : 'matches'}
+          </span>
+          {liveCount > 0 && (
+            <span className="flex items-center gap-1 shrink-0">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-pulse-live absolute h-full w-full rounded-full bg-red-500 opacity-75" />
+                <span className="relative rounded-full h-1.5 w-1.5 bg-red-500" />
+              </span>
+              <span className="font-display text-[9px] font-bold text-red-400 uppercase tracking-wider">
+                {liveCount} live
+              </span>
+            </span>
+          )}
+        </div>
+        <div className="hidden sm:flex items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={() => scroll(-1)}
+            aria-label={`Scroll ${name} left`}
+            className="p-1 rounded-md border border-white/10 text-gray-500 hover:text-gold hover:border-gold/30 transition-all"
+          >
+            <ChevronLeft size={13} />
+          </button>
+          <button
+            type="button"
+            onClick={() => scroll(1)}
+            aria-label={`Scroll ${name} right`}
+            className="p-1 rounded-md border border-white/10 text-gray-500 hover:text-gold hover:border-gold/30 transition-all"
+          >
+            <ChevronRight size={13} />
+          </button>
+        </div>
+      </div>
+      <div
+        ref={scrollRef}
+        className="flex gap-3 overflow-x-auto pb-2 scroll-smooth"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
+        {matches.map((match) => (
+          <MatchCard key={match.id} match={match} onOpen={onOpen} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function LiveScores() {
   const [ref, visible] = useScrollAnimation();
-  const scrollRef = useRef(null);
   const { matches } = useAppData();
   const [selected, setSelected] = useState(null);
   const visibleMatches = matches.filter((m) => m.status !== 'FT');
@@ -309,10 +384,7 @@ export default function LiveScores() {
 
   if (!visibleMatches.length) return null;
 
-  const scroll = (dir) => {
-    if (!scrollRef.current) return;
-    scrollRef.current.scrollBy({ left: dir * 300, behavior: 'smooth' });
-  };
+  const grouped = groupMatchesByCompetition(visibleMatches);
 
   return (
     <section className="relative py-10 sm:py-14 bg-navy">
@@ -339,33 +411,11 @@ export default function LiveScores() {
               </span>
             </div>
           </div>
-
-          <div className="hidden sm:flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => scroll(-1)}
-              className="p-1.5 rounded-lg border border-white/10 text-gray-400 hover:text-gold hover:border-gold/30 transition-all"
-            >
-              <ChevronLeft size={16} />
-            </button>
-            <button
-              type="button"
-              onClick={() => scroll(1)}
-              className="p-1.5 rounded-lg border border-white/10 text-gray-400 hover:text-gold hover:border-gold/30 transition-all"
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
         </div>
 
-        <div
-          ref={scrollRef}
-          className="flex gap-3 overflow-x-auto pb-2 scroll-smooth"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-        >
-          <style>{`.scores-strip::-webkit-scrollbar { display: none; }`}</style>
-          {visibleMatches.map((match) => (
-            <MatchCard key={match.id} match={match} onOpen={setSelected} />
+        <div className="space-y-6">
+          {grouped.map((g) => (
+            <CompetitionStrip key={g.name} name={g.name} matches={g.matches} onOpen={setSelected} />
           ))}
         </div>
       </div>

@@ -15,6 +15,7 @@ urlpatterns = [
     path("api/comments/", include("apps.comments.urls")),
     path("api/newsletter/", include("apps.newsletter.urls")),
     path("api/bookmarks/", include("apps.bookmarks.urls")),
+    path("api/transfers/", include("apps.transfers.urls")),
     path("api/", include("apps.core.urls")),
 ]
 

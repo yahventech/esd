@@ -48,7 +48,7 @@ export default {
       },
       animation: {
         'pulse-live': 'pulse-live 1.5s ease-in-out infinite',
-        'ticker': 'ticker-scroll 45s linear infinite',
+        'ticker': 'ticker-scroll 28s linear infinite',
         'fade-in': 'fade-in-up 0.7s ease-out forwards',
         'slide-right': 'slide-right 0.5s ease-out forwards',
         'shimmer': 'shimmer 2s linear infinite',

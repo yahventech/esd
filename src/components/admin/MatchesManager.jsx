@@ -42,14 +42,19 @@ const blank = {
   is_featured: false,
 };
 
-function MatchForm({ editing, teams, onSaved, onCancel, showToast }) {
+function MatchForm({ editing, teams, competitions, onSaved, onCancel, showToast }) {
   const [form, setField, setForm] = useFormState(blank);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const isEdit = Boolean(editing?.id);
 
   useEffect(() => {
-    if (!editing) { setForm(blank); return; }
+    if (!editing) {
+      // Seed competition with the first admin-defined competition so the
+      // dropdown starts on a real option instead of the legacy default.
+      setForm({ ...blank, competition: competitions[0]?.name || '' });
+      return;
+    }
     // Match detail uses nested {home:{name,...}} — we need to find the team id from name.
     const homeTeam = teams.find((t) => t.name === editing.home?.name);
     const awayTeam = teams.find((t) => t.name === editing.away?.name);
@@ -67,7 +72,26 @@ function MatchForm({ editing, teams, onSaved, onCancel, showToast }) {
       order: editing.order ?? 0,
       is_featured: Boolean(editing.is_featured),
     });
-  }, [editing, teams]);
+  }, [editing, teams, competitions]);
+
+  // The Match model stores `competition` as plain text, so the dropdown
+  // emits the competition *name* (not id). If the saved value isn't one of
+  // the admin-defined competitions (e.g. left over from an old import) we
+  // still want it visible — surface it as a "legacy" option so editors can
+  // re-pick a proper one without losing the current label.
+  const competitionOpts = useMemo(() => {
+    const opts = competitions.map((c) => ({
+      value: c.name,
+      label: c.category_name ? `${c.name} · ${c.category_name}` : c.name,
+    }));
+    if (form.competition && !competitions.some((c) => c.name === form.competition)) {
+      opts.unshift({ value: form.competition, label: `${form.competition} (legacy)` });
+    }
+    if (!opts.length) {
+      opts.unshift({ value: '', label: '— No competitions yet —' });
+    }
+    return opts;
+  }, [competitions, form.competition]);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -118,8 +142,8 @@ function MatchForm({ editing, teams, onSaved, onCancel, showToast }) {
 
   return (
     <form onSubmit={submit} className="space-y-4">
-      <Field label="Competition" required>
-        <TextInput value={form.competition} onChange={(v) => setField('competition', v)} required />
+      <Field label="Competition" required hint={competitions.length ? undefined : 'Create a competition in the Stats tab first.'}>
+        <Select value={form.competition} onChange={(v) => setField('competition', v)} options={competitionOpts} />
       </Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Home team" required>
@@ -318,6 +342,7 @@ function EventsPanel({ match, teams, onClose, showToast }) {
 export default function MatchesManager({ showToast, onDataChanged }) {
   const [rows, setRows] = useState([]);
   const [teams, setTeams] = useState([]);
+  const [competitions, setCompetitions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null);
   const [openForm, setOpenForm] = useState(false);
@@ -330,9 +355,14 @@ export default function MatchesManager({ showToast, onDataChanged }) {
   const load = async () => {
     setLoading(true);
     try {
-      const [ms, ts] = await Promise.all([api.admin.matches.list(), api.admin.teams.list()]);
+      const [ms, ts, cs] = await Promise.all([
+        api.admin.matches.list(),
+        api.admin.teams.list(),
+        api.admin.competitions.list().catch(() => []),
+      ]);
       setRows(Array.isArray(ms) ? ms : (ms?.results || []));
       setTeams(Array.isArray(ts) ? ts : (ts?.results || []));
+      setCompetitions(Array.isArray(cs) ? cs : (cs?.results || []));
     } catch (e) { showToast.showError(apiErrorMessage(e, 'Could not load matches')); }
     finally { setLoading(false); }
   };
@@ -547,7 +577,7 @@ export default function MatchesManager({ showToast, onDataChanged }) {
       )}
 
       <Modal open={openForm} onClose={() => setOpenForm(false)} title={editing ? 'Edit match' : 'New match'}>
-        <MatchForm editing={editing} teams={teams} showToast={showToast}
+        <MatchForm editing={editing} teams={teams} competitions={competitions} showToast={showToast}
           onCancel={() => setOpenForm(false)}
           onSaved={() => { setOpenForm(false); load(); onDataChanged?.(); }} />
       </Modal>

@@ -93,6 +93,7 @@ INSTALLED_APPS = [
     "apps.comments",
     "apps.newsletter",
     "apps.bookmarks",
+    "apps.transfers",
     "apps.core",
 ]
 
