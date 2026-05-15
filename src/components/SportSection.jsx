@@ -69,6 +69,61 @@ function StoryTile({ story, onOpen }) {
   );
 }
 
+function NewsKindFeed({ categorySlug, onOpen }) {
+  // The News Feed sub-page fetches the sport's published stories directly via
+  // the category articles endpoint, bypassing CategorySection.tag_filter so
+  // an accidentally-set filter on the section row never empties the page.
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!categorySlug) return;
+    let alive = true;
+    setLoading(true);
+    setError(null);
+    api.categories.articles(categorySlug, 40)
+      .then((rows) => {
+        if (!alive) return;
+        setItems(Array.isArray(rows) ? rows : (rows?.results || []));
+      })
+      .catch((e) => { if (alive) setError(e?.message || 'Failed to load stories'); })
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, [categorySlug]);
+
+  if (loading) {
+    return (
+      <div className="py-16 flex justify-center">
+        <Loader2 size={22} className="text-gold animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-xl border border-red-500/20 bg-red-500/[0.06] p-6 text-center text-red-300 font-body text-sm">
+        {error}
+      </div>
+    );
+  }
+
+  if (!items.length) {
+    return (
+      <div className="rounded-xl border border-white/[0.05] bg-navy-100/30 p-10 text-center text-gray-500 font-body text-sm">
+        Nothing published under this sport yet — check back soon.
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
+      {items.map((s) => <StoryTile key={s.id} story={s} onOpen={onOpen} />)}
+    </div>
+  );
+}
+
+
 function ScoresWithToggle({ categorySlug, onOpen }) {
   // The Scores subpage shows live matches by default but lets the user flip to
   // finished games (results) without leaving the page. Keeping both behind one
@@ -699,6 +754,8 @@ export default function SportSection({ categorySlug, sectionSlug, navigate }) {
   const renderBody = () => {
     if (!section) return null;
     switch (section.kind) {
+      case 'news':
+        return <NewsKindFeed categorySlug={categorySlug} onOpen={setOpenStory} />;
       case 'scores':
         return <ScoresWithToggle categorySlug={categorySlug} onOpen={setOpenMatch} />;
       case 'results':
